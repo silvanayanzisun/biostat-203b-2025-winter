@@ -1,7 +1,7 @@
 ---
 title: "Biostat 203B Homework 1"
 subtitle: Due Jan 24, 2024 @ 11:59PM
-author: Your Name and UID
+author: Yanzi Sun 106183069
 format:
   html:
     theme: cosmo
@@ -34,6 +34,8 @@ sessionInfo()
 4. After each homework due date, course reader and instructor will check out your `main` branch for grading. Tag each of your homework submissions with tag names `hw1`, `hw2`, ... Tagging time will be used as your submission time. That means if you tag your `hw1` submission after deadline, penalty points will be deducted for late submission.
 
 5. After this course, you can make this repository public and use it to demonstrate your skill sets on job market.
+**Solution** Done on Jan11.
+
 
 ## Q2. Data ethics training
 
