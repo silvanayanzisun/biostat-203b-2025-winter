@@ -40,8 +40,8 @@ sessionInfo()
 ## Q2. Data ethics training
 
 This exercise (and later in this course) uses the [MIMIC-IV data v3.1](https://physionet.org/content/mimiciv/3.1/), a freely accessible critical care database developed by the MIT Lab for Computational Physiology. Follow the instructions at <https://mimic.mit.edu/docs/gettingstarted/> to (1) complete the CITI `Data or Specimens Only Research` course and (2) obtain the PhysioNet credential for using the MIMIC-IV data. Display the verification links to your completion report and completion certificate here. **You must complete Q2 before working on the remaining questions.** (Hint: The CITI training takes a few hours and the PhysioNet credentialing takes a couple days; do not leave it to the last minute.)
-**Solution** Here is the link of the completion report:https://www.citiprogram.org/verify/?k1283ea47-0ca3-42b7-9d2b-e721bfb691cb-67209968,
-completion certificate:https://www.citiprogram.org/verify/?w3df54344-f850-42f3-b0df-9a632ad2eecf-67209968
+**Solution** Here is the link of the completion report:<https://www.citiprogram.org/verify/?k1283ea47-0ca3-42b7-9d2b-e721bfb691cb-67209968>,
+completion certificate:<https://www.citiprogram.org/verify/?w3df54344-f850-42f3-b0df-9a632ad2eecf-67209968>
 
 
 ## Q3. Linux Shell Commands
@@ -55,8 +55,13 @@ ls -l ~/mimic/
 Refer to the documentation <https://physionet.org/content/mimiciv/3.1/> for details of data files. Do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
 
   Use Bash commands to answer following questions.
+**Solution:**I downloaded MIMIC IV v3.1 to my computer and made it available at '~mimic/'.
 
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
+**Solution:**here is the answer to question 2
+```{bash}
+ls -l ~mimic/hosp
+```
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
 
