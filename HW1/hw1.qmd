@@ -34,13 +34,15 @@ sessionInfo()
 4. After each homework due date, course reader and instructor will check out your `main` branch for grading. Tag each of your homework submissions with tag names `hw1`, `hw2`, ... Tagging time will be used as your submission time. That means if you tag your `hw1` submission after deadline, penalty points will be deducted for late submission.
 
 5. After this course, you can make this repository public and use it to demonstrate your skill sets on job market.
-**Solution** Done on Jan11.
+
+**Solution:** Done on Jan11.
 
 
 ## Q2. Data ethics training
 
 This exercise (and later in this course) uses the [MIMIC-IV data v3.1](https://physionet.org/content/mimiciv/3.1/), a freely accessible critical care database developed by the MIT Lab for Computational Physiology. Follow the instructions at <https://mimic.mit.edu/docs/gettingstarted/> to (1) complete the CITI `Data or Specimens Only Research` course and (2) obtain the PhysioNet credential for using the MIMIC-IV data. Display the verification links to your completion report and completion certificate here. **You must complete Q2 before working on the remaining questions.** (Hint: The CITI training takes a few hours and the PhysioNet credentialing takes a couple days; do not leave it to the last minute.)
-**Solution** Here is the link of the completion report:<https://www.citiprogram.org/verify/?k1283ea47-0ca3-42b7-9d2b-e721bfb691cb-67209968>,
+
+**Solution:** Here is the link of the completion report:<https://www.citiprogram.org/verify/?k1283ea47-0ca3-42b7-9d2b-e721bfb691cb-67209968>,
 completion certificate:<https://www.citiprogram.org/verify/?w3df54344-f850-42f3-b0df-9a632ad2eecf-67209968>
 
 
@@ -55,7 +57,8 @@ ls -l ~/mimic/
 Refer to the documentation <https://physionet.org/content/mimiciv/3.1/> for details of data files. Do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
 
   Use Bash commands to answer following questions.
-**Solution:**I downloaded MIMIC IV v3.1 to my computer and made it available at '~mimic/'.
+  
+**Solution:**I downloaded MIMIC IV v3.1 to my computer and made it available at '~/mimic/'.
 
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
 **Solution:**here is the answer to question 2. The files are gzip-compressed csv files so they has .gz at the end of file name. Compressing files can save storage space.
@@ -65,6 +68,7 @@ ls -l ~/mimic/icu
 ```
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
+
 **Solution:**zcat allows to view a compressed (zipped) file directly, basically a cat command for zipped files.
 zless view compressed file contents in a paginated way, can also do search option
 zmore view compressed file contents in a new tab
