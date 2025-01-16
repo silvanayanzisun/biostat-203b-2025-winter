@@ -58,12 +58,14 @@ Refer to the documentation <https://physionet.org/content/mimiciv/3.1/> for deta
 **Solution:**I downloaded MIMIC IV v3.1 to my computer and made it available at '~mimic/'.
 
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
-**Solution:**here is the answer to question 2
+**Solution:**here is the answer to question 2. The files are gzip-compressed csv files so they has .gz at the end of file name. Compressing files can save storage space.
 ```{bash}
-ls -l ~mimic/hosp
+ls -l ~/mimic/hosp
+ls -l ~/mimic/icu
 ```
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
+
 
 4. (Looping in Bash) What's the output of the following bash script?
 ```{bash}
@@ -100,6 +102,7 @@ do
   # some bash commands here
 done
 ```
+
 
 2. What's the difference between the following two commands?
 ```{bash}
