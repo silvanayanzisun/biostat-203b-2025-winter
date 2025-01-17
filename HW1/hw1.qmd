@@ -83,10 +83,37 @@ do
 done
 ```
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
+```{bash}
+for datafile in ~/mimic/hosp/{a,l,pa}*.gz
+do
+  zcat < $datafile | wc -l
+  gzip -t $datafile
+done
+```
+
+
+
 
 5. Display the first few lines of `admissions.csv.gz`. How many rows are in this data file, excluding the header line? Each `hadm_id` identifies a hospitalization. How many hospitalizations are in this data file? How many unique patients (identified by `subject_id`) are in this data file? Do they match the number of patients listed in the `patients.csv.gz` file? (Hint: combine Linux commands `zcat <`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
 
+**Solution:** 
+```{bash}
+zcat < ~/mimic/hosp/admissions.csv.gz | head -10 
+```
+
+
 6. What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, `sort`, and so on; skip the header line.)
+
+**Solution:** 
+```{bash}
+zcat < ~/mimic/hosp/admissions.csv.gz |  
+awk -F, '{print $6}'|
+tail -n +2|
+sort -r|
+uniq -c
+```
+
+
 
 7. The `icusays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
 
