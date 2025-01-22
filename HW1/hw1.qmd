@@ -82,12 +82,13 @@ do
   ls -l $datafile
 done
 ```
+**Solution:** The results are a long list(including file permission and sizes) of all files starting with "a,l, or pa" inside the hosp folder.
+
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
 ```{bash}
 for datafile in ~/mimic/hosp/{a,l,pa}*.gz
 do
   zcat < $datafile | wc -l
-  gzip -t $datafile
 done
 ```
 
@@ -98,8 +99,15 @@ done
 
 **Solution:** 
 ```{bash}
-zcat < ~/mimic/hosp/admissions.csv.gz | head -10 
+zcat < ~/mimic/hosp/admissions.csv.gz | head -5 
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | wc -l 
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $2}' | wc -l
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $1}' | uniq| wc -l
+zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | uniq | wc -l 
+
 ```
+**Solition:**
+There are 546028 rows in this file excluding the headerline. There are 546028 hospitalizations in this data file. There are 223452 unique patients, which does not matchthe number of patients listed in the patients.csv(364627)
 
 
 6. What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, `sort`, and so on; skip the header line.)
@@ -148,6 +156,13 @@ and
 #| eval: false
 echo 'hello, world' >> test2.txt
 ```
+
+**Solution:** 
+Redirection >: redirecting the standard output to a file
+> save text to output file (overwrite if file exist) 
+>> append to the end of the output file
+
+
 
 3. Using your favorite text editor (e.g., `vi`), type the following and save the file as `middle.sh`:
 ```{bash eval=FALSE}
