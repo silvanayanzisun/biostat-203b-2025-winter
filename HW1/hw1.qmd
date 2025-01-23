@@ -201,6 +201,42 @@ The output is the result of running shell script written in [middle.sh] on [pg42
 
 Try following commands in Bash and interpret the results: `cal`, `cal 2025`, `cal 9 1752` (anything unusual?), `date`, `hostname`, `arch`, `uname -a`, `uptime`, `who am i`, `who`, `w`, `id`, `last | head`, `echo {con,pre}{sent,fer}{s,ed}`, `time sleep 5`, `history | tail`.
 
+**Solution:**
+cal gives the calender of the year or month indicated.
+date gives the current date and time based off your system time zone.
+hostname gives the name of my PC.
+arch gives my PC's architecture type.
+uname -a gives detail information of my PC, including kernel, hostname, operating system, time, root, and architecture.
+uptime gives current system time, how long the PC has been running since last restart, average load time, and number of users.
+who am i tells the user is me and gives system time.
+who gives a list of users and time using the PC.
+w provides a detailed use history of past users.
+id gives information about the user identity.
+last provides a list of logins into the PC, head option limits the output number to 10.
+echo {con,pre}{sent,fer}{s,ed} prints out all possible combinations of the characters in curly brackets. 2*2*2=8
+the sleep command pauses execution for 5 seconds and the time command measures how long it actually takes.
+history | tail displays the last 10 commands from my shell history.
+
+```{bash}
+#cal 2025
+#cal 1 2001
+#date
+#hostname
+#arch
+#uname -a
+#uptime
+#who am i
+#who
+#w
+#id
+#last |head
+#echo {con,pre}{sent,fer}{s,ed}
+#time sleep 5
+history | tail
+```
+
+
+
 ## Q6. Book
 
 1. Git clone the repository <https://github.com/christophergandrud/Rep-Res-Book> for the book _Reproducible Research with R and RStudio_ to your local machine. Do **not** put this repository within your homework repository `biostat-203b-2025-winter`.
