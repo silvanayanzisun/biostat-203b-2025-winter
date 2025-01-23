@@ -153,16 +153,14 @@ rm ~/mimic/hosp/labevents.csv
 wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 ```
 Explain what `wget -nc` does. Do **not** put this text file `pg42671.txt` in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.
+**Solution:** 'wget -nc' downloads file from websites, -nc is the option that specifies not to create duplicate if the file was downloaded already. The counts for each names are calculated below.
 ```{bash}
-#| eval: false
-wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 for char in Elizabeth Jane Lydia Darcy
 do
   echo $char:
-  # some bash commands here
+  grep -c "$char" pg42671.txt
 done
 ```
-
 
 2. What's the difference between the following two commands?
 ```{bash}
@@ -195,6 +193,9 @@ Using `chmod` to make the file executable by the owner, and run
 ./middle.sh pg42671.txt 20 5
 ```
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
+**Solution:** I used this chmod command line to edit user access:chmod u+x middle.sh 
+The output is the result of running shell script written in [middle.sh] on [pg42671.txt]. The "$1" represents the filename, "$2" represents the end_line, and "$3" represents the number of lines. Basically the head command is translated to: head -n endline filename | tail -n num lines. When the shell script is executable and applied to the txt file, it extracts line 15 to 20 as the end line is 20 and the number of lines are 5.
+
 
 ## Q5. More fun with Linux
 
