@@ -174,7 +174,7 @@ Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
 
-**Solution:** Apache Arrow is a tool that makes working with big data super fast and simple. Imagine you have a huge file, like a giant table, and instead of making copies or waiting a long time to load it, Arrow lets different programs—like Python, R, or databases—read it directly and quickly. It saves memory and speeds up tasks, like analyzing data or running models. It provides a smart way for different tools to share and work with the same data without wasting time or resources.
+**Solution:** It takes 3.69 seconds of system time for apache arrow to finish the entire process. Apache Arrow is a tool that makes working with big data super fast and simple. Imagine you have a huge file, like a giant table, and instead of making copies or waiting a long time to load it, Arrow lets different programs—like Python, R, or databases—read it directly and quickly. It saves memory and speeds up tasks, like analyzing data or running models. It provides a smart way for different tools to share and work with the same data without wasting time or resources.
 
 ```{r}
 system.time({
@@ -197,10 +197,26 @@ Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arro
 
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
 
-**Solution:**
+**Solution:** Parquet is a way to store data that’s smart and efficient. Instead of saving data row by row like a regular file (like CSV), it saves it column by column. This makes it faster to work with, especially if you only need specific parts of the data. Plus, it compresses the data, so it takes up less space on your computer. Think of it like packing your suitcase neatly to fit more stuff while keeping it easy to find what you need. It’s great for handling big datasets quickly!
 
 ```{r}
+system.time({
+  arrow::write_dataset(
+    open_dataset("labevents.csv", format = "csv"),
+    path = "labevents_parquet", 
+    format = "parquet"
+  )
+})
 
+system.time({
+  parquet_tibble <- arrow::open_dataset("labevents_parquet", format = "parquet") %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    collect() 
+})
+
+head(parquet_tibble, 10)
+nrow(parquet_tibble)
 ```
 
 
