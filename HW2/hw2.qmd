@@ -138,17 +138,18 @@ In later exercises, we will only be interested in the following lab items: creat
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
 
-**Solution:** There are 12626179 lines in the new filtered file excluding the header. It takes around 0.5 seconds for `read_csv` to ingest the filtered csv.
+**Solution:** There are 32679896 lines in the new filtered file excluding the header. It takes the system around 0.5 seconds for `read_csv` to ingest the filtered csv.gz.(32 seconds for user)
 
 
 ```{bash}
 #| eval: false
 zcat < ~/mimic/hosp/labevents.csv.gz | awk -F',' '
-NR==1 || ($5 == "50912" || $5 == "50971" || $5 == "50983" || $5 == "50902" || 
-          $5 == "50882" || $5 == "51221" || $5 == "51301" || $5 == "50931") { 
+NR==1 || ($5 == 50912 || $5 == 50971 || $5 == 50983 || $5 == 50902 || 
+          $5 == 50882 || $5 == 51221 || $5 == 51301 || $5 == 50931) { 
     print $2 "," $5 "," $7 "," $10 
 }' | gzip > labevents_filtered.csv.gz
 ```
+
 ```{bash}
 zcat < labevents_filtered.csv.gz | head -10
 ```
@@ -270,4 +271,8 @@ zcat < ~/mimic/icu/d_items.csv.gz | head -10
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
+```{bash}
+
+
+```
 
