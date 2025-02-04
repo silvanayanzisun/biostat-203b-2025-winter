@@ -230,6 +230,28 @@ Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](ht
 
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
 
+**Solution:** It takes around 2 seconds for the system to process the entire workflow. DuckDB is a super-fast, lightweight database designed for data analysis. It’s great for working with large files like CSVs or Parquet, and it can handle millions of rows quickly without using too much memory. DuckDB helps you filter, sort, and analyze data much faster than using traditional data frames. It’s like SQLite for analytics, but designed to crunch numbers at lightning speed. 
+
+```{r}
+system.time({
+  parquet_dataset <- arrow::open_dataset("labevents_parquet", format = "parquet")
+
+  duckdb_connection <- dbConnect(duckdb::duckdb())
+  duckdb_table <- arrow::to_duckdb(parquet_dataset, con = duckdb_connection)
+  
+  duckdb_tibble <- duckdb_table %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    collect()  
+})
+
+head(duckdb_tibble, 10)
+nrow(duckdb_tibble)
+
+dbDisconnect(duckdb_connection)
+```
+
+
 ## Q3. Ingest and filter `chartevents.csv.gz`
 
 [`chartevents.csv.gz`](https://mimic.mit.edu/docs/iv/modules/icu/chartevents/) contains all the charted data available for a patient. During their ICU stay, the primary repository of a patient’s information is their electronic chart. The `itemid` variable indicates a single measurement type in the database. The `value` variable is the value measured for `itemid`. The first 10 lines of `chartevents.csv.gz` are
