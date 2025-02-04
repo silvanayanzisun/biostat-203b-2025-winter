@@ -71,7 +71,7 @@ object_size(tidyverse_read)
 object_size(fread_read)
 ```
 ```{r}
-str(base_read)  
+str(base_read)
 str(tidyverse_read)  
 str(fread_read)
 ```
@@ -79,6 +79,13 @@ str(fread_read)
 ### Q1.2 User-supplied data types
 
 Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `read_csv`. Does the run time change? How much memory does the result tibble use? (Hint: `col_types` argument in `read_csv`.)
+
+**Solution:** The run time is almost the same as me not indicating column data types. And the memory is exactly the same as just using read_csv.
+```{r}
+system.time(specified_column<-read_csv("~/mimic/hosp/admissions.csv.gz", col_types = NULL))
+object_size(specified_column)
+```
+
 
 ## Q2. Ingest big data files
 
@@ -103,9 +110,21 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
 
+**Solution:** My R crashes. The reason is the file is too huge once decompressed. The reading process is taking more memory than my computer's capability(8gb ram).
+```{r}
+read_csv("~/mimic/hosp/labevents.csv.gz")
+```
+
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
+
+**Solution:** No, it does not solve the ingestion issue, still taking forever to run chunk.
+```{r}
+system.time(read_csv("~/mimic/hosp/labevents.csv.gz", col_select= c("subject_id", "itemid", "charttime", "valuenum")))
+
+```
+
 
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
@@ -118,6 +137,26 @@ Our first strategy to handle this big data file is to make a subset of the `labe
 In later exercises, we will only be interested in the following lab items: creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931) and the following columns: `subject_id`, `itemid`, `charttime`, `valuenum`. Write a Bash command to extract these columns and rows from `labevents.csv.gz` and save the result to a new file `labevents_filtered.csv.gz` in the current working directory. (Hint: Use `zcat <` to pipe the output of `labevents.csv.gz` to `awk` and then to `gzip` to compress the output. Do **not** put `labevents_filtered.csv.gz` in Git! To save render time, you can put `#| eval: false` at the beginning of this code chunk. TA will change it to `#| eval: true` before rendering your qmd file.)
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
+
+**Solution:** There are 514267 lines in the new filtered file excluding the header. It takes around 0.5 seconds for `read_csv` to ingest the filtered csv.
+```{bash}
+#| eval: false
+zcat< ~/mimic/hosp/labevents.csv.gz | awk -F',' '
+NR==1 || $5 ~ /50912|50971|50983|50902|50882|51221|51301|50931/ { 
+    print $2 "," $5 "," $7 "," $10 
+}' | gzip > labevents_filtered.csv.gz
+```
+```{bash}
+zcat < labevents_filtered.csv.gz | head -10
+```
+```{bash}
+zcat < labevents_filtered.csv.gz | tail -n +2 |wc -l
+```
+
+```{r}
+system.time(read.csv("labevents_filtered.csv.gz"))
+```
+
 
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
 
