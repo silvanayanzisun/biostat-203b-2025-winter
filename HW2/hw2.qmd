@@ -138,17 +138,21 @@ In later exercises, we will only be interested in the following lab items: creat
 
 Display the first 10 lines of the new file `labevents_filtered.csv.gz`. How many lines are in this new file, excluding the header? How long does it take `read_csv` to ingest `labevents_filtered.csv.gz`?
 
-**Solution:** There are 514267 lines in the new filtered file excluding the header. It takes around 0.5 seconds for `read_csv` to ingest the filtered csv.
+**Solution:** There are 12626179 lines in the new filtered file excluding the header. It takes around 0.5 seconds for `read_csv` to ingest the filtered csv.
+
+
 ```{bash}
 #| eval: false
-zcat< ~/mimic/hosp/labevents.csv.gz | awk -F',' '
-NR==1 || $5 ~ /50912|50971|50983|50902|50882|51221|51301|50931/ { 
+zcat < ~/mimic/hosp/labevents.csv.gz | awk -F',' '
+NR==1 || ($5 == "50912" || $5 == "50971" || $5 == "50983" || $5 == "50902" || 
+          $5 == "50882" || $5 == "51221" || $5 == "51301" || $5 == "50931") { 
     print $2 "," $5 "," $7 "," $10 
 }' | gzip > labevents_filtered.csv.gz
 ```
 ```{bash}
 zcat < labevents_filtered.csv.gz | head -10
 ```
+
 ```{bash}
 zcat < labevents_filtered.csv.gz | tail -n +2 |wc -l
 ```
@@ -170,6 +174,19 @@ Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
 
+**Solution:** Apache Arrow is a tool that makes working with big data super fast and simple. Imagine you have a huge file, like a giant table, and instead of making copies or waiting a long time to load it, Arrow lets different programs—like Python, R, or databases—read it directly and quickly. It saves memory and speeds up tasks, like analyzing data or running models. It provides a smart way for different tools to share and work with the same data without wasting time or resources.
+
+```{r}
+system.time({
+  apache_tibble <- arrow::open_dataset("labevents.csv", format = "csv") %>%
+  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+  select(subject_id, itemid, charttime, valuenum) %>%
+  collect()})
+
+head(apache_tibble)
+nrow(apache_tibble)
+```
+
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
 <p align="center">
@@ -179,6 +196,13 @@ Write a few sentences to explain what is Apache Arrow. Imagine you want to expla
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
+
+**Solution:**
+
+```{r}
+
+```
+
 
 ### Q2.6 DuckDB
 
