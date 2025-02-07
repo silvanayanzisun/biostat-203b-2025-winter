@@ -3,7 +3,7 @@ title: "Biostat 203B Homework 2"
 subtitle: Due Feb 7, 2025 @ 11:59PM
 author: "Yanzi Sun 106183069"
 format:
-  html:
+  pdf:
     theme: cosmo
     embed-resources: true
     number-sections: false
@@ -82,7 +82,8 @@ Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `re
 
 **Solution:** The run time is almost the same as me not indicating column data types. And the memory is exactly the same as just using read_csv.
 ```{r}
-system.time(specified_column<-read_csv("~/mimic/hosp/admissions.csv.gz", col_types = NULL))
+system.time(specified_column<-read_csv("~/mimic/hosp/admissions.csv.gz",
+                                       col_types = NULL))
 object_size(specified_column)
 ```
 
@@ -111,7 +112,7 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
 
 **Solution:** My R crashes. The reason is the file is too huge once decompressed. The reading process is taking more memory than my computer's capability(8gb ram).
-```{r}
+```{r, eval=FALSE}
 read_csv("~/mimic/hosp/labevents.csv.gz")
 ```
 
@@ -120,8 +121,10 @@ read_csv("~/mimic/hosp/labevents.csv.gz")
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 
 **Solution:** No, it does not solve the ingestion issue, still taking forever to run chunk. This is probably due to csv files are read row by rows. Selecting columns cannot shorten the time of reading rows.
-```{r}
-system.time(read_csv("~/mimic/hosp/labevents.csv.gz", col_select= c("subject_id", "itemid", "charttime", "valuenum")))
+```{r, eval=FALSE}
+system.time(read_csv("~/mimic/hosp/labevents.csv.gz", 
+                     col_select= c("subject_id", "itemid", 
+                                   "charttime", "valuenum")))
 
 ```
 
@@ -180,8 +183,10 @@ Write a few sentences to explain what is Apache Arrow. Imagine you want to expla
 ```{r}
 system.time({
   apache_tibble <- arrow::open_dataset("labevents.csv", format = "csv") %>%
-  filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+  filter(itemid %in% c(50912, 50971, 50983, 50902,
+                       50882, 51221, 51301, 50931)) %>%
   select(subject_id, itemid, charttime, valuenum) %>%
+  arrange(subject_id, charttime, itemid) %>%
   collect()})
 
 head(apache_tibble)
@@ -210,9 +215,12 @@ system.time({
 })
 
 system.time({
-  parquet_tibble <- arrow::open_dataset("labevents_parquet", format = "parquet") %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+  parquet_tibble <- arrow::open_dataset("labevents_parquet", 
+                                        format = "parquet") %>%
+    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882,
+               51221, 51301, 50931)) %>%
     select(subject_id, itemid, charttime, valuenum) %>%
+    arrange(subject_id, charttime, itemid) %>%
     collect() 
 })
 
@@ -235,14 +243,17 @@ Write a few sentences to explain what is DuckDB. Imagine you want to explain it 
 
 ```{r}
 system.time({
-  parquet_dataset <- arrow::open_dataset("labevents_parquet", format = "parquet")
+  parquet_dataset <- arrow::open_dataset("labevents_parquet",
+                                         format = "parquet")
 
   duckdb_connection <- dbConnect(duckdb::duckdb())
   duckdb_table <- arrow::to_duckdb(parquet_dataset, con = duckdb_connection)
   
   duckdb_tibble <- duckdb_table %>%
-    filter(itemid %in% c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) %>%
+    filter(itemid %in% c(50912, 50971, 50983,
+                         50902, 50882, 51221, 51301, 50931)) %>%
     select(subject_id, itemid, charttime, valuenum) %>%
+    arrange(subject_id, charttime, itemid) %>%
     collect()  
 })
 
@@ -260,8 +271,7 @@ dbDisconnect(duckdb_connection)
 zcat < ~/mimic/icu/chartevents.csv.gz | head -10
 ```
 How many rows? 433 millions.
-```{bash}
-#| eval: false
+```{bash, eval= FALSE}
 zcat < ~/mimic/icu/chartevents.csv.gz | tail -n +2 | wc -l
 ```
 [`d_items.csv.gz`](https://mimic.mit.edu/docs/iv/modules/icu/d_items/) is the dictionary for the `itemid` in `chartevents.csv.gz`.
@@ -272,16 +282,18 @@ In later exercises, we are interested in the vitals for ICU patients: heart rate
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
 
-**Solution:** I choose to use apache arrow with dplyr to answer this question. First, I downloaded the unzipped chartevnts.csv from box folder, then I ingest it with open_dataset function and output a parquet file. Next, I created a tibble collecting the dplyer-filtered dataset. Finally, I showed the nrow and head the first 10 rows.
+**Solution:** I choose to use apache arrow with dplyr to answer this question. First, I downloaded the unzipped chartevnts.csv from box folder, then I ingest it with open_dataset function and output a parquet file. Next, I created a tibble collecting the dplyer-filtered dataset. Finally, I showed the nrow and head the first 10 rows. Please remove # since I made a parquet file in my memory and rendering takes too much memory.
 
 ```{r}
-arrow::write_dataset(
-    open_dataset("chartevents.csv", format = "csv"),
-    path = "chartevents_parquet",
-    format = "parquet")
+#arrow::write_dataset(
+    #open_dataset("chartevents.csv", format = "csv"),
+    #path = "chartevents_parquet",
+    #format = "parquet")
 
-chartevents_tibble <- arrow::open_dataset("chartevents_parquet", format = "parquet") %>%
+chartevents_tibble <- arrow::open_dataset("chartevents_parquet",
+                                          format = "parquet") %>%
     filter(itemid %in% c(220045, 220181, 220179, 223761, 220210)) %>%
+  arrange(subject_id, charttime, itemid) %>%
     collect() 
 
 head(chartevents_tibble, 10)
