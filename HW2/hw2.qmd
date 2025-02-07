@@ -119,7 +119,7 @@ read_csv("~/mimic/hosp/labevents.csv.gz")
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
 
-**Solution:** No, it does not solve the ingestion issue, still taking forever to run chunk.
+**Solution:** No, it does not solve the ingestion issue, still taking forever to run chunk. This is probably due to csv files are read row by rows. Selecting columns cannot shorten the time of reading rows.
 ```{r}
 system.time(read_csv("~/mimic/hosp/labevents.csv.gz", col_select= c("subject_id", "itemid", "charttime", "valuenum")))
 
@@ -198,7 +198,7 @@ Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arro
 
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
 
-**Solution:** Parquet is a way to store data that’s smart and efficient. Instead of saving data row by row like a regular file (like CSV), it saves it column by column. This makes it faster to work with, especially if you only need specific parts of the data. Plus, it compresses the data, so it takes up less space on your computer. Think of it like packing your suitcase neatly to fit more stuff while keeping it easy to find what you need. It’s great for handling big datasets quickly!
+**Solution:** The file size is 2.5 GB, and the system time used by the Parquet file is shown below. The row number matches that of Q2.3. Parquet is a way to store data that’s smart and efficient. Instead of saving data row by row like a regular file (like CSV), it saves it column by column. This makes it faster to work with, especially if you only need specific parts of the data. Plus, it compresses the data, so it takes up less space on your computer. Think of it like packing your suitcase neatly to fit more stuff while keeping it easy to find what you need. It’s great for handling big datasets quickly.
 
 ```{r}
 system.time({
@@ -271,8 +271,19 @@ zcat < ~/mimic/icu/d_items.csv.gz | head -10
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
-```{bash}
 
+**Solution:** I choose to use apache arrow with dplyr to answer this question. First, I downloaded the unzipped chartevnts.csv from box folder, then I ingest it with open_dataset function and output a parquet file. Next, I created a tibble collecting the dplyer-filtered dataset. Finally, I showed the nrow and head the first 10 rows.
 
+```{r}
+arrow::write_dataset(
+    open_dataset("chartevents.csv", format = "csv"),
+    path = "chartevents_parquet",
+    format = "parquet")
+
+chartevents_tibble <- arrow::open_dataset("chartevents_parquet", format = "parquet") %>%
+    filter(itemid %in% c(220045, 220181, 220179, 223761, 220210)) %>%
+    collect() 
+
+head(chartevents_tibble, 10)
+nrow(chartevents_tibble)
 ```
-
