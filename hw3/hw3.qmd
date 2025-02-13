@@ -1,7 +1,7 @@
 ---
 title: "Biostat 203B Homework 3"
 subtitle: "Due Feb 21 @ 11:59PM"
-author: "Your Name and UID"
+author: "Yanzi Sun 106183069"
 format:
   html:
     theme: cosmo
@@ -48,6 +48,34 @@ Do a similar visualization for the patient with `subject_id` 10063848 using ggpl
 
 Hint: We need to pull information from data files `patients.csv.gz`, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`. For the big file `labevents.csv.gz`, use the Parquet format you generated in Homework 2. For reproducibility, make the Parquet folder `labevents_pq` available at the current working directory `hw3`, for example, by a symbolic link. Make your code reproducible.
 
+```{r}
+#use semi-join to filter & merge rows
+labevents_pq <- arrow::open_dataset("labevents_parquet",
+                                         format = "parquet") %>%
+              filter(subject_id == 10063848) %>%
+              collect()
+head(labevents_pq)
+```
+
+```{r}
+#pulled data from&creating subjects patients_df, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`.
+
+patients_df <- read_csv("~/mimic/hosp/patients.csv.gz")
+admissions_df <- read_csv("~/mimic/hosp/admissions.csv.gz")
+transfers_df <- read_csv("~/mimic/hosp/transfers.csv.gz")
+procedures_icd_df <- read_csv("~/mimic/hosp/procedures_icd.csv.gz")
+diagnoses_icd_df <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz")
+d_icd_procedures_df <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz")
+d_icd_diagnoses_df <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz")
+```
+
+
+```{r}
+#left join all datasets and filter out patient with `subject_id` 10001217
+
+
+```
+
 ### Q1.2 ICU stays
 
 ICU stays are a subset of ADT history. This figure shows the vitals of the patient `10001217` during ICU stays. The x-axis is the calendar time, and the y-axis is the value of the vital. The color of the line represents the type of vital. The facet grid shows the abbreviation of the vital and the stay ID.
@@ -81,6 +109,10 @@ zcat < ~/mimic/hosp/admissions.csv.gz | head
 ### Q3.1 Ingestion
 
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
+```{r}
+
+
+```
 
 ### Q3.2 Summary and visualization
 
