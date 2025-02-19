@@ -26,6 +26,7 @@ library(memuse)
 library(pryr)
 library(R.utils)
 library(tidyverse)
+library(ggplot2)
 ```
 
 Display your machine memory.
@@ -60,20 +61,84 @@ head(labevents_pq)
 ```{r}
 #pulled data from&creating subjects patients_df, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`.
 
-patients_df <- read_csv("~/mimic/hosp/patients.csv.gz")
-admissions_df <- read_csv("~/mimic/hosp/admissions.csv.gz")
-transfers_df <- read_csv("~/mimic/hosp/transfers.csv.gz")
-procedures_icd_df <- read_csv("~/mimic/hosp/procedures_icd.csv.gz")
-diagnoses_icd_df <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz")
+patients_df <- read_csv("~/mimic/hosp/patients.csv.gz") |>
+              filter(subject_id == 10063848) %>%
+              collect()
+admissions_df <- read_csv("~/mimic/hosp/admissions.csv.gz") |>
+              filter(subject_id == 10063848) %>%
+              collect()
+transfers_df <- read_csv("~/mimic/hosp/transfers.csv.gz") |>
+              filter(subject_id == 10063848) %>%
+              collect()
+procedures_icd_df <- read_csv("~/mimic/hosp/procedures_icd.csv.gz") |>
+              filter(subject_id == 10063848) %>%
+              collect()
+diagnoses_icd_df <- read_csv("~/mimic/hosp/diagnoses_icd.csv.gz") |>
+              filter(subject_id == 10063848) %>%
+              collect()
 d_icd_procedures_df <- read_csv("~/mimic/hosp/d_icd_procedures.csv.gz")
 d_icd_diagnoses_df <- read_csv("~/mimic/hosp/d_icd_diagnoses.csv.gz")
 ```
 
 
 ```{r}
-#left join all datasets and filter out patient with `subject_id` 10001217
+# Load necessary libraries
+library(tidyverse)
+library(lubridate)
 
+# Convert date columns to Date format
+transfers_data <- transfers_df %>%
+  mutate(intime = as.Date(intime), outtime = as.Date(outtime))
 
+lab_data <- labevents_pq %>%
+  mutate(charttime = as.Date(charttime))
+
+procedure_data <- procedures_icd_df %>%
+  mutate(chartdate = as.Date(chartdate))
+
+diagnoses_translated <- diagnoses_icd_df %>%
+  left_join(d_icd_diagnoses_df, by = "icd_code") %>%
+  top_n(3, wt = seq_num)  # Select top 3 diagnoses
+
+# Convert to a readable format
+diagnoses_text <- paste(diagnoses_translated$long_title, collapse = ", ")
+
+# Merge procedures with descriptions
+procedures_translated <- procedure_data %>%
+  left_join(d_icd_procedures_df, by = "icd_code")
+
+# Ensure procedure titles are available
+procedure_data <- procedure_data %>%
+  left_join(d_icd_procedures_df, by = "icd_code") 
+
+# Create ggplot visualization
+ggplot() +
+  # Plot Transfers (Care Units) as segments
+  geom_segment(data = transfers_data, 
+               aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", color = careunit),
+               size = 3) +
+  
+  # Plot Lab Events as points
+  geom_point(data = lab_data, 
+             aes(x = charttime, y = "Lab"), 
+             shape = 3, size = 2) +
+  
+  # Plot Procedures as points with different shapes
+  geom_point(data = procedure_data, 
+             aes(x = chartdate, y = "Procedure", shape = long_title), 
+             size = 3, fill = "black") +
+  
+  # Formatting
+  labs(
+    title = paste0("Patient ", patients_df$subject_id, ", ", patients_df$gender, ", ", 
+                   patients_df$anchor_age, " years old, ", admissions_df$race),
+    subtitle = paste("Diagnoses:", paste(diagnoses_text, collapse="\n")),
+    x = "Calendar Time", y = "Type of Event",
+    color = "Care Unit",
+    shape = "Procedure"
+  ) +
+  scale_x_date(date_labels = "%b %d") +
+  theme_minimal(base_size=8) 
 ```
 
 ### Q1.2 ICU stays
