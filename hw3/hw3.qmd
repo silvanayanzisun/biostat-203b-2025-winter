@@ -55,7 +55,7 @@ labevents_pq <- arrow::open_dataset("labevents_parquet",
                                          format = "parquet") %>%
               filter(subject_id == 10063848) %>%
               collect()
-head(labevents_pq)
+labevents_pq 
 ```
 
 ```{r}
@@ -98,6 +98,7 @@ procedure_data <- procedures_icd_df %>%
 
 diagnoses_translated <- diagnoses_icd_df %>%
   left_join(d_icd_diagnoses_df, by = "icd_code") %>%
+  filter(icd_version.y=="10") %>%
   top_n(3, wt = seq_num)  # Select top 3 diagnoses
 
 # Convert to a readable format
@@ -148,6 +149,57 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 ![](10001217_icu.png)
 
 Do a similar visualization for the patient `10063848`.
+```{r}
+library(fuzzyjoin)
+transfers_icu <- transfers_df %>%
+                filter(careunit == "Surgical Intensive Care Unit (SICU)")
+
+ggplot(labevents_pq, aes(x = charttime, y = value, color = 52869274)) +
+  
+  # Plot Lines with Points
+  geom_line(size = 1) + 
+  geom_point(size = 2) + 
+
+  # Facet Grid: Rows = Vitals, Columns = ICU Stay ID
+  facet_grid(. ~ transfers_icu$transfer_id, scales = "free_y") + 
+
+  # Formatting
+  labs(
+    title = paste("Patient", "10063848", "ICU stays - Vitals"),
+    x = "Calendar Time", 
+    y = "Vital Value",
+    color = "Vital Sign"
+  ) +
+  
+  # Improve theme aesthetics
+  theme_minimal() 
+```
+
+```{r}  
+
+ggplot(labevents_pq, aes(x = charttime, y = value, color = vital_name, group = vital_name)) +
+  
+  # Line plot for vitals over time
+  geom_line(size = 1) +
+  geom_point(size = 1.5) +
+  
+  # Facet grid by ICU stay and vital sign
+  facet_grid(vital_name ~ stay_id, scales = "free_y") +
+  
+  # Formatting
+  labs(
+    title = paste("Patient", subject_id, "ICU stays - Vitals"),
+    x = "Calendar Time",
+    y = "Value of the Vital",
+    color = "Vital Sign"
+  ) +
+  
+  theme_minimal()
+
+
+```
+
+
 
 ## Q2. ICU stays
 
@@ -160,9 +212,29 @@ zcat < ~/mimic/icu/icustays.csv.gz | head
 
 Import `icustays.csv.gz` as a tibble `icustays_tble`. 
 
+```{r}
+icustays_tble <- read_csv("~/mimic/icu/icustays.csv.gz")
+```
+
 ### Q2.2 Summary and visualization
 
 How many unique `subject_id`? Can a `subject_id` have multiple ICU stays? Summarize the number of ICU stays per `subject_id` by graphs. 
+
+**Solution:** There are 65366 unique subject_id. Yes, a subject_id can have multiple icu stays as question 1 shows. The graph of #icu stays per subject_id is shown below.
+```{r}
+icu_stay_counts <- icustays_tble %>%
+  group_by(subject_id) %>%
+  summarise(num_stays = n()) 
+
+ggplot(icu_stay_counts, aes(x = factor(subject_id), y = num_stays)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Number of ICU Stays per Patient",
+    x = "Patient subject_id",
+    y = "Number of ICU Stays"
+  ) +
+  theme_minimal()
+```
 
 ## Q3. `admissions` data
 
