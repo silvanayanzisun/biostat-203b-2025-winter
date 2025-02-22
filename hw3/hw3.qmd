@@ -222,14 +222,19 @@ How many unique `subject_id`? Can a `subject_id` have multiple ICU stays? Summar
 ```{r}
 icu_stay_counts <- icustays_tble %>%
   group_by(subject_id) %>%
-  summarise(num_stays = n()) 
+  summarise(num_stays = n())
 
-ggplot(icu_stay_counts, aes(x = factor(subject_id), y = num_stays)) +
+stay_distribution <- icu_stay_counts %>%
+  group_by(num_stays) %>%
+  summarise(frequency = n())
+
+# Create bar plot
+ggplot(stay_distribution, aes(x = num_stays, y = frequency)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(
-    title = "Number of ICU Stays per Patient",
-    x = "Patient subject_id",
-    y = "Number of ICU Stays"
+    title = "Distribution of ICU Stays per Patient",
+    x = "Number of ICU Stays",
+    y = "Number of Patients"
   ) +
   theme_minimal()
 ```
@@ -246,7 +251,6 @@ zcat < ~/mimic/hosp/admissions.csv.gz | head
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
 ```{r}
 admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz")
-
 ```
 
 ### Q3.2 Summary and visualization
@@ -261,6 +265,12 @@ Summarize the following information by graphics and explain any patterns you see
 According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/concepts/#date-shifting), 
 
 > All dates in the database have been shifted to protect patient confidentiality. Dates will be internally consistent for the same patient, but randomly distributed in the future. Dates of birth which occur in the present time are not true dates of birth. Furthermore, dates of birth which occur before the year 1900 occur if the patient is older than 89. In these cases, the patient’s age at their first admission has been fixed to 300.
+
+```{r}
+
+
+```
+
 
 ## Q4. `patients` data
 
