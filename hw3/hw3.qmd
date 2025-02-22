@@ -102,7 +102,8 @@ diagnoses_translated <- diagnoses_icd_df %>%
   top_n(3, wt = seq_num)  # Select top 3 diagnoses
 
 # Convert to a readable format
-diagnoses_text <- paste(diagnoses_translated$long_title, collapse = ", ")
+diagnoses_text <- paste(diagnoses_translated$long_title, 
+                        collapse = ", ")
 
 # Merge procedures with descriptions
 procedures_translated <- procedure_data %>%
@@ -116,7 +117,8 @@ procedure_data <- procedure_data %>%
 ggplot() +
   # Plot Transfers (Care Units) as segments
   geom_segment(data = transfers_data, 
-               aes(x = intime, xend = outtime, y = "ADT", yend = "ADT", color = careunit),
+               aes(x = intime, xend = outtime, 
+                   y = "ADT", yend = "ADT", color = careunit),
                size = 3) +
   
   # Plot Lab Events as points
@@ -131,9 +133,12 @@ ggplot() +
   
   # Formatting
   labs(
-    title = paste0("Patient ", patients_df$subject_id, ", ", patients_df$gender, ", ", 
-                   patients_df$anchor_age, " years old, ", admissions_df$race),
-    subtitle = paste("Diagnoses:", paste(diagnoses_text, collapse="\n")),
+    title = paste0("Patient ", patients_df$subject_id,
+                   ", ", patients_df$gender, ", ", 
+                   patients_df$anchor_age, " years old, ",
+                   admissions_df$race),
+    subtitle = paste("Diagnoses:", 
+                     paste(diagnoses_text, collapse="\n")),
     x = "Calendar Time", y = "Type of Event",
     color = "Care Unit",
     shape = "Procedure"
@@ -150,18 +155,28 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 
 Do a similar visualization for the patient `10063848`.
 ```{r}
-library(fuzzyjoin)
-transfers_icu <- transfers_df %>%
-                filter(careunit == "Surgical Intensive Care Unit (SICU)")
+#ingest all icu data
+chartevents_pq <- arrow::open_dataset("chartevents_parquet",
+                                         format = "parquet") |>
+              filter(subject_id == 10063848,
+                     itemid %in% c(220045, 220179, 223761, 220210)) |>
+              collect()
+d_items_df <- read_csv("~/mimic/icu/d_items.csv.gz") |>
+            select(itemid, abbreviation) 
+icu_all <- chartevents_pq |>
+          left_join(y=d_items_df, by="itemid") |>
+          select(subject_id, stay_id, charttime,
+                 itemid, valuenum, abbreviation)
 
-ggplot(labevents_pq, aes(x = charttime, y = value, color = 52869274)) +
-  
-  # Plot Lines with Points
-  geom_line(size = 1) + 
-  geom_point(size = 2) + 
 
-  # Facet Grid: Rows = Vitals, Columns = ICU Stay ID
-  facet_grid(. ~ transfers_icu$transfer_id, scales = "free_y") + 
+```
+```{r}
+#I consulted with Bowen on this question and he said my computer may read time differently so the second stay could show a different time period.
+ggplot(icu_all, aes(x = charttime, y = valuenum, color = abbreviation )) +
+  geom_line() + 
+  geom_point() + 
+  facet_grid(abbreviation ~ stay_id, scales = "free") + 
+  scale_x_datetime() +
 
   # Formatting
   labs(
@@ -175,28 +190,11 @@ ggplot(labevents_pq, aes(x = charttime, y = value, color = 52869274)) +
   theme_minimal() 
 ```
 
-```{r}  
 
-ggplot(labevents_pq, aes(x = charttime, y = value, color = vital_name, group = vital_name)) +
-  
-  # Line plot for vitals over time
-  geom_line(size = 1) +
-  geom_point(size = 1.5) +
-  
-  # Facet grid by ICU stay and vital sign
-  facet_grid(vital_name ~ stay_id, scales = "free_y") +
-  
-  # Formatting
-  labs(
-    title = paste("Patient", subject_id, "ICU stays - Vitals"),
-    x = "Calendar Time",
-    y = "Value of the Vital",
-    color = "Vital Sign"
-  ) +
-  
-  theme_minimal()
-
-
+```{r}
+graphics.off()  # Closes all open plots
+rm(list = ls()) # Clears all objects in the environment
+gc()            # Runs garbage collection
 ```
 
 
@@ -247,7 +245,7 @@ zcat < ~/mimic/hosp/admissions.csv.gz | head
 
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
 ```{r}
-
+admissions_tble <- read_csv("~/mimic/hosp/admissions.csv.gz")
 
 ```
 
@@ -274,6 +272,10 @@ zcat < ~/mimic/hosp/patients.csv.gz | head
 ### Q4.1 Ingestion
 
 Import `patients.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/patients/>) as a tibble `patients_tble`.
+```{r}
+patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz")
+
+```
 
 ### Q4.2 Summary and visualization
 
@@ -295,9 +297,40 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 ![](labevents_tble.png)
 
+Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link. get the most recent lab result of each patients for each icu stay
 
-Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+```{r}
+dlabitems_tble <-
+  read_csv("~/mimic/hosp/labevents.csv.gz")
 
+```
+```{r}
+open_dataset("labevents_pq", format = "parquet") |>
+  to_duckdb() |>
+  select(subject_id, itemid, storetime, valuenum) |>
+  filter(itemid %in% dlabitems_tble$itemid) |>
+  left_join(
+    select(icustays_tble, subject_id, stay_id, intime ),
+    by=c("subject_id"),
+    copy = TRUE )|>
+  filter(storetime < intime) |>
+  group_by(subject_id, stay_id, itemid) |>
+  slice_max(storetime, n = 1) |>
+  select(-storetime, -intime) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  rename_at (
+    var(as.character(dlabitems_tble$itemid)),
+    ~str_to_lower(dlabitems_tble$label)
+  ) |>
+  rename(wbc = `white blood cell`) |>
+  show_query() |>
+  collect() |>
+  arrange(subject_id, stay_id) |>
+  relocate(subject_id, stay_id, sort(names(.))
+  )|>
+  print(width = Inf)
+```
 ## Q6. Vitals from charted events
 
 `chartevents.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/chartevents/>) contains all the charted data available for a patient. During their ICU stay, the primary repository of a patient’s information is their electronic chart. The `itemid` variable indicates a single measurement type in the database. The `value` variable is the value measured for `itemid`. The first 10 lines of `chartevents.csv.gz` are
@@ -316,6 +349,11 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
 
+```{r}
+use charttime
+take the average of the value at all storetime 
+
+```
 ## Q7. Putting things together
 
 Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all ICU stays of adults (age at `intime` >= 18) and columns contain at least following variables
