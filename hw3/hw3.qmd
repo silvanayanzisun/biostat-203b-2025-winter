@@ -423,19 +423,27 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link. get the most recent lab result of each patients for each icu stay
 
-```{r}
-dlabitems_tble <-
-  read_csv("~/mimic/hosp/labevents.csv.gz")
 
-```
 ```{r}
-open_dataset("labevents_pq", format = "parquet") |>
+# I followed Dr.Zhou's instruction during lecture for this question
+# create dictionary table
+dlabitems_tble <- read.csv("~/mimic/hosp/d_labitems.csv.gz") |>
+  filter(itemid %in% c(
+    50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) |>
+  mutate(itemid = as.integer(itemid)) |>
+  print()
+```
+
+```{r}
+# data wrangling step
+open_dataset("labevents_parquet", format = "parquet") |>
   to_duckdb() |>
   select(subject_id, itemid, storetime, valuenum) |>
   filter(itemid %in% dlabitems_tble$itemid) |>
   left_join(
-    select(icustays_tble, subject_id, stay_id, intime ),
+    select(icustays_tble, subject_id, stay_id, intime),
     by=c("subject_id"),
+    #copy=TRUE copies the r table into duckdb table to make them mergeable
     copy = TRUE )|>
   filter(storetime < intime) |>
   group_by(subject_id, stay_id, itemid) |>
@@ -444,15 +452,14 @@ open_dataset("labevents_pq", format = "parquet") |>
   ungroup() |>
   pivot_wider(names_from = itemid, values_from = valuenum) |>
   rename_at (
-    var(as.character(dlabitems_tble$itemid)),
+    vars(as.character(dlabitems_tble$itemid)),
     ~str_to_lower(dlabitems_tble$label)
   ) |>
-  rename(wbc = `white blood cell`) |>
+  rename(wbc = `white blood cells`) |>
   show_query() |>
   collect() |>
   arrange(subject_id, stay_id) |>
-  relocate(subject_id, stay_id, sort(names(.))
-  )|>
+  relocate(subject_id, stay_id, chloride, hematocrit, bicarbonate, glucose, potassium, sodium, hematocrit, wbc) |>
   print(width = Inf)
 ```
 ## Q6. Vitals from charted events
@@ -471,12 +478,44 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 
 ![](chartevents_tble.png)
 
-Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
+```{r}
+#use charttime
+#take the average of the value at all storetime 
+
+dchartitems_tble <- read.csv("~/mimic/icu/d_items.csv.gz") |>
+  filter(itemid %in% c(
+    220045, 220179, 220180, 223761, 220210)) |>
+  mutate(itemid = as.integer(itemid)) |>
+  print()
+```
 
 ```{r}
-use charttime
-take the average of the value at all storetime 
-
+open_dataset("chartevents_parquet", format = "parquet") |>
+  to_duckdb() |>
+  select(subject_id, itemid, charttime, valuenum) |>
+  filter(itemid %in% dchartitems_tble$itemid) |>
+  left_join(
+    select(icustays_tble, subject_id, stay_id),
+    by=c("subject_id"),
+    #copy=TRUE copies the r table into duckdb table to make them mergeable
+    copy = TRUE )|>
+  group_by(subject_id, stay_id, itemid, charttime) |>
+  summarise(mean_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") |>
+  slice_max(mean_valuenum, n = 1) |>
+  # ungroup() |>
+  # pivot_wider(names_from = itemid, values_from = mean_valuenum) |>
+  # rename_at (
+  #   vars(as.character(dchartitems_tble$itemid)),
+  #   ~str_to_lower(dchartitems_tble$label)
+  # ) |>
+  # # show_query() |>
+  # collect() |>
+  # arrange(subject_id, stay_id) |>
+  # relocate(subject_id, stay_id, `heart rate`,
+  #          `non invasive blood pressure diastolic`,
+  #          `non invasive blood pressure systolic`,
+  #          `respiratory rate`, `temperature fahrenheit`) |>
+  print(width = Inf)
 ```
 ## Q7. Putting things together
 
