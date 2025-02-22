@@ -352,11 +352,6 @@ ggplot(hosp_stay_distribution, aes(x = length_of_stay, y = frequency)) +
                   ) +
   theme_minimal()
 
-
-
-
-```
-
 ```
 
 
@@ -370,14 +365,45 @@ zcat < ~/mimic/hosp/patients.csv.gz | head
 ### Q4.1 Ingestion
 
 Import `patients.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/patients/>) as a tibble `patients_tble`.
+
 ```{r}
 patients_tble <- read_csv("~/mimic/hosp/patients.csv.gz")
-
 ```
 
 ### Q4.2 Summary and visualization
 
 Summarize variables `gender` and `anchor_age` by graphics, and explain any patterns you see.
+
+**Solution:** The summary graphics are drawn below. I see the gender distribution is fairly equal, with female slightly larger in number than male. The anchor age shows most patients are in their 20s and a lot of patients have the anchor age of ~90 yo, which is surprising but can be understandable due to the nature of the anchor age data protecting patients' privacy.
+
+```{r}
+### gender 
+gender_dist <- patients_tble |>
+  group_by(gender) |>
+  summarise(frequency = n())
+
+age_dist <- patients_tble |>
+  group_by(anchor_age) |>
+  summarise(frequency = n())
+
+ggplot(gender_dist, aes(x = gender, y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+             labs(title = "Patient Gender Distribution",
+                  x = "Gender",
+                  y = "Number of Patients"
+                  ) +
+  theme_minimal()
+
+ggplot(age_dist, aes(x = anchor_age, y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+             labs(title = "Patient Anchor Age Distribution",
+                  x = "Anchor Age",
+                  y = "Number of Patients"
+                  ) +
+  theme_minimal()
+
+```
+
 
 ## Q5. Lab results
 
