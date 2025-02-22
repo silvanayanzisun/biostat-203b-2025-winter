@@ -266,8 +266,96 @@ According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/co
 
 > All dates in the database have been shifted to protect patient confidentiality. Dates will be internally consistent for the same patient, but randomly distributed in the future. Dates of birth which occur in the present time are not true dates of birth. Furthermore, dates of birth which occur before the year 1900 occur if the patient is older than 89. In these cases, the patient’s age at their first admission has been fixed to 300.
 
-```{r}
+**Solution:** The graphs are plotted below. 
 
+In the number of admission per patient, I observed that most patients have only one admission, but one outlier patient has 40 admissions surprisingly.
+
+In the admission hour summary, the abnormality I found is the admission hour is mostly at 0am, which is the start of a day. I assume it is the default hour when logging admission time into the system.
+
+Similarly in admission minute summary, I see most patients are admitted at 0, 15, 30, 45 minute, which can be due to the convienience to record the admission munite to the closest quarter point.
+
+From the length of stay graph, most patients stay between 1-5 days. The abnormality I found is the distribution looks like a wave, with repeating peaks and troughs.The peaks are the integer hours and the troughs are hours with decimal. I think this is also due to the convienient-time-recording habit doctors have when inputting the time data. 
+```{r}
+### number of admissions per patient
+hosp_admission_counts <- admissions_tble %>%
+  group_by(subject_id) %>%
+  summarise(num_stays = n())
+
+hosp_admission_distribution <- hosp_admission_counts %>%
+  group_by(num_stays) %>%
+  summarise(frequency = n())
+
+ggplot(hosp_admission_distribution, aes(x = num_stays, y = frequency)) +
+  xlim(0, 50)+
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    title = "Distribution of Hospital Admission per Patient",
+    x = "Number of Hospital Admission",
+    y = "Number of Patients"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+### admission hour (anything unusual?) 
+admission_hour <- admissions_tble %>%
+  mutate(admit_hour = hour(admittime))
+
+admission_hour_distribution <- admission_hour %>%
+  group_by(admit_hour) %>%
+  summarise(frequency = n())
+
+ggplot(admission_hour_distribution, aes(x = admit_hour, y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+             labs(title = "Admission Hour Counts",
+                  x = "Admission Hour",
+                  y = "Number of Patients"
+                  ) +
+  theme_minimal()
+```
+
+```{r}
+### admission minute (anything unusual?)  
+admission_minute <- admissions_tble %>%
+  mutate(admit_minute = minute(admittime))
+
+admission_minute_distribution <- admission_minute %>%
+  group_by(admit_minute) %>%
+  summarise(frequency = n())
+
+ggplot(admission_minute_distribution, aes(x = admit_minute, y = frequency)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+             labs(title = "Admission Minute Counts",
+                  x = "Admission Minute",
+                  y = "Number of Patients"
+                  ) +
+  theme_minimal()
+```
+
+```{r}
+### length of hospital stay (from admission to discharge) (anything unusual?) 
+hospital_stay <- admissions_tble |>
+      mutate(length_of_stay = as.numeric(difftime(dischtime,
+                                                  admittime, 
+                                                  units = "days")))
+
+hosp_stay_distribution <- hospital_stay |>
+  group_by(length_of_stay) |>
+  summarise(frequency = n())
+
+ggplot(hosp_stay_distribution, aes(x = length_of_stay, y = frequency)) +
+  xlim(0, 25)+
+  geom_bar(stat = "identity", fill = "steelblue") +
+             labs(title = "Hospital Stay distribution",
+                  x = "Hospital Stay Length",
+                  y = "Number of Patients"
+                  ) +
+  theme_minimal()
+
+
+
+
+```
 
 ```
 
