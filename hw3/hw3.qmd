@@ -573,34 +573,51 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 
 - Length of ICU stay `los` vs first ICU unit
 
+**Solution:** I choose to do a numeric summary for the first 3 and a ggplot for the last one. The results are shown below.
 ```{r}
-demographics_summary <- mimic_icu_cohort %>%
-  group_by(race, insurance, marital_status, gender) %>%
-  summarise(
-    count = n(),
-    median_los = median(los, na.rm = TRUE),
-    mean_los = mean(los, na.rm = TRUE),
-    min_los = min(los, na.rm = TRUE),
-    max_los = max(los, na.rm = TRUE)
-  ) %>%
-  arrange(desc(median_los))
-
-print(demographics_summary)
+demographics <- c("race", "insurance", "marital_status", "gender", "age_at_intime")
+for (i in demographics) {
+  summary_table <- mimic_icu_cohort |>
+  group_by(.data[[i]]) |>
+  summarise(mean_los = mean(los, na.rm = TRUE), 
+            median_los = median(los, na.rm = TRUE)) |>
+  arrange(desc(mean_los)) |>
+    print()
+}
+```
+```{r}
+lab_measurements <- names(labevents_tble)[-c(1,2)]
+for (i in lab_measurements) {
+  summary_table <- mimic_icu_cohort |>
+  group_by(.data[[i]]) |>
+  summarise(mean_los = mean(los, na.rm = TRUE), 
+            median_los = median(los, na.rm = TRUE)) |>
+  arrange(desc(mean_los)) |>
+    print()
+}
 ```
 
 ```{r}
-los_demo_race <- ggplot(mimic_icu_cohort, aes(x=race, y=los)) +
+vital_measurements <- names(chartevents_tble)[-c(1,2)]
+for (i in vital_measurements) {
+  summary_table <- mimic_icu_cohort |>
+  group_by(.data[[i]]) |>
+  summarise(mean_los = mean(los, na.rm = TRUE), 
+            median_los = median(los, na.rm = TRUE)) |>
+  arrange(desc(mean_los)) |>
+    print()
+}
+```
+
+
+```{r}
+ggplot(mimic_icu_cohort, aes(x=first_careunit, y=los)) +
   geom_bar(stat = "identity", fill = "steelblue") +
    labs(
-    title = "Length of ICU stay `los` vs demographic variables",
-    x = "Demographic variables",
+    title = "Length of ICU stay `los` vs first careunit",
+    x = "First careunit",
     y = "Length of ICU stay"
   ) +
-  theme_minimal() +
+  theme_minimal()+
   coord_flip()
-
-# figure1 <- ggarrange(bxp, dp, lp,
-#                     labels = c("A", "B", "C"),
-#                     ncol = 2, nrow = 2)
-# figure
 ```
