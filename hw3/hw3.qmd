@@ -479,7 +479,6 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 ```{r}
-#use charttime
 #take the average of the value at all storetime 
 
 dchartitems_tble <- read.csv("~/mimic/icu/d_items.csv.gz") |>
@@ -492,7 +491,7 @@ dchartitems_tble <- read.csv("~/mimic/icu/d_items.csv.gz") |>
 ```{r}
 chartevents_tble <- open_dataset("chartevents_parquet", format = "parquet") |>
   to_duckdb() |>
-  select(subject_id, itemid, charttime, valuenum) |>
+  select(subject_id, itemid, storetime, valuenum) |>
   filter(itemid %in% dchartitems_tble$itemid) |>
   left_join(
     select(icustays_tble, subject_id, stay_id),
@@ -500,15 +499,17 @@ chartevents_tble <- open_dataset("chartevents_parquet", format = "parquet") |>
     #copy=TRUE copies the r table into duckdb table to make them mergeable
     copy = TRUE )|>
   group_by(subject_id, stay_id, itemid) |>
-  summarise(mean_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") |>
-  #slice_max(mean_valuenum, n = 1) |>
+  # i forgot if Dr. Zhou want us to take average of the mean value or use the first stored value. but here is the case when taking the mean:
+  #summarise(mean_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") |>
+  slice_min(storetime, n = 1) |>
+  select(-storetime) |>
   ungroup() |>
-  pivot_wider(names_from = itemid, values_from = mean_valuenum) |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
   rename_at (
     vars(as.character(dchartitems_tble$itemid)),
     ~str_to_lower(dchartitems_tble$label)
   ) |>
-  # # show_query() |>
+  # # # show_query() |>
   collect() |>
   arrange(subject_id, stay_id) |>
   relocate(subject_id, stay_id, `heart rate`,
@@ -573,5 +574,33 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 - Length of ICU stay `los` vs first ICU unit
 
 ```{r}
-ggplot(mimic_icu_cohort, aes(x=c(race, insurance, marital_status, gender, anchor_age), y=length_icu_stay))
+demographics_summary <- mimic_icu_cohort %>%
+  group_by(race, insurance, marital_status, gender) %>%
+  summarise(
+    count = n(),
+    median_los = median(los, na.rm = TRUE),
+    mean_los = mean(los, na.rm = TRUE),
+    min_los = min(los, na.rm = TRUE),
+    max_los = max(los, na.rm = TRUE)
+  ) %>%
+  arrange(desc(median_los))
+
+print(demographics_summary)
+```
+
+```{r}
+los_demo_race <- ggplot(mimic_icu_cohort, aes(x=race, y=los)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+   labs(
+    title = "Length of ICU stay `los` vs demographic variables",
+    x = "Demographic variables",
+    y = "Length of ICU stay"
+  ) +
+  theme_minimal() +
+  coord_flip()
+
+# figure1 <- ggarrange(bxp, dp, lp,
+#                     labels = c("A", "B", "C"),
+#                     ncol = 2, nrow = 2)
+# figure
 ```
