@@ -436,7 +436,7 @@ dlabitems_tble <- read.csv("~/mimic/hosp/d_labitems.csv.gz") |>
 
 ```{r}
 # data wrangling step
-open_dataset("labevents_parquet", format = "parquet") |>
+labevents_tble <- open_dataset("labevents_parquet", format = "parquet") |>
   to_duckdb() |>
   select(subject_id, itemid, storetime, valuenum) |>
   filter(itemid %in% dlabitems_tble$itemid) |>
@@ -490,7 +490,7 @@ dchartitems_tble <- read.csv("~/mimic/icu/d_items.csv.gz") |>
 ```
 
 ```{r}
-open_dataset("chartevents_parquet", format = "parquet") |>
+chartevents_tble <- open_dataset("chartevents_parquet", format = "parquet") |>
   to_duckdb() |>
   select(subject_id, itemid, charttime, valuenum) |>
   filter(itemid %in% dchartitems_tble$itemid) |>
@@ -530,6 +530,35 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
 The final `mimic_icu_cohort` should have one row per ICU stay and columns for each variable.
 
 ![](mimic_icu_cohort.png)
+```{r}
+#according to mimic documentation online, age of a patient = hospital admission time - anchor_year + anchor_age
+mimic_icu_cohort <- patients_tble |>
+  left_join(icustays_tble, by = c("subject_id")) |>
+  mutate(age_at_intime = year(intime) - anchor_year + anchor_age) |>
+  filter(age_at_intime >=18) |>
+  left_join(admissions_tble, by = c("subject_id","hadm_id"))
+
+first_vitals <- chartevents_tble |>
+  group_by(subject_id, stay_id) |>
+  slice_min(stay_id, n = 1) |>  # Get the first recorded value
+  ungroup()
+
+#  Summarize LAST lab values BEFORE ICU stay
+last_labs <- labevents_tble |>
+  group_by(subject_id, stay_id) |>
+  slice_max(stay_id, n = 1) |>  # Get the last recorded value before ICU
+  ungroup()
+
+#  JOIN summarized tables to mimic_icu_cohort
+mimic_icu_cohort <- mimic_icu_cohort |>
+  left_join(first_vitals, by = c("subject_id", "stay_id")) |>
+  left_join(last_labs, by = c("subject_id", "stay_id")) 
+
+# Check final structure
+print(mimic_icu_cohort)
+
+```
+
 
 ## Q8. Exploratory data analysis (EDA)
 
@@ -543,3 +572,6 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 
 - Length of ICU stay `los` vs first ICU unit
 
+```{r}
+ggplot(mimic_icu_cohort, aes(x=c(race, insurance, marital_status, gender, anchor_age), y=length_icu_stay))
+```
