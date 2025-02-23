@@ -499,22 +499,22 @@ open_dataset("chartevents_parquet", format = "parquet") |>
     by=c("subject_id"),
     #copy=TRUE copies the r table into duckdb table to make them mergeable
     copy = TRUE )|>
-  group_by(subject_id, stay_id, itemid, charttime) |>
+  group_by(subject_id, stay_id, itemid) |>
   summarise(mean_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") |>
-  slice_max(mean_valuenum, n = 1) |>
-  # ungroup() |>
-  # pivot_wider(names_from = itemid, values_from = mean_valuenum) |>
-  # rename_at (
-  #   vars(as.character(dchartitems_tble$itemid)),
-  #   ~str_to_lower(dchartitems_tble$label)
-  # ) |>
+  #slice_max(mean_valuenum, n = 1) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = mean_valuenum) |>
+  rename_at (
+    vars(as.character(dchartitems_tble$itemid)),
+    ~str_to_lower(dchartitems_tble$label)
+  ) |>
   # # show_query() |>
-  # collect() |>
-  # arrange(subject_id, stay_id) |>
-  # relocate(subject_id, stay_id, `heart rate`,
-  #          `non invasive blood pressure diastolic`,
-  #          `non invasive blood pressure systolic`,
-  #          `respiratory rate`, `temperature fahrenheit`) |>
+  collect() |>
+  arrange(subject_id, stay_id) |>
+  relocate(subject_id, stay_id, `heart rate`,
+           `non invasive blood pressure diastolic`,
+           `non invasive blood pressure systolic`,
+           `respiratory rate`, `temperature fahrenheit`) |>
   print(width = Inf)
 ```
 ## Q7. Putting things together
