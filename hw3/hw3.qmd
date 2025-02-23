@@ -1,6 +1,6 @@
 ---
 title: "Biostat 203B Homework 3"
-subtitle: "Due Feb 21 @ 11:59PM"
+subtitle: "Due Feb 23 @ 11:59PM"
 author: "Yanzi Sun 106183069"
 format:
   html:
@@ -49,13 +49,13 @@ Do a similar visualization for the patient with `subject_id` 10063848 using ggpl
 
 Hint: We need to pull information from data files `patients.csv.gz`, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`. For the big file `labevents.csv.gz`, use the Parquet format you generated in Homework 2. For reproducibility, make the Parquet folder `labevents_pq` available at the current working directory `hw3`, for example, by a symbolic link. Make your code reproducible.
 
+**Solution:** My result is shown below.
 ```{r}
 #use semi-join to filter & merge rows
 labevents_pq <- arrow::open_dataset("labevents_parquet",
                                          format = "parquet") %>%
               filter(subject_id == 10063848) %>%
               collect()
-labevents_pq 
 ```
 
 ```{r}
@@ -87,18 +87,18 @@ library(tidyverse)
 library(lubridate)
 
 # Convert date columns to Date format
-transfers_data <- transfers_df %>%
+transfers_data <- transfers_df |>
   mutate(intime = as.Date(intime), outtime = as.Date(outtime))
 
-lab_data <- labevents_pq %>%
+lab_data <- labevents_pq |>
   mutate(charttime = as.Date(charttime))
 
-procedure_data <- procedures_icd_df %>%
+procedure_data <- procedures_icd_df |>
   mutate(chartdate = as.Date(chartdate))
 
-diagnoses_translated <- diagnoses_icd_df %>%
-  left_join(d_icd_diagnoses_df, by = "icd_code") %>%
-  filter(icd_version.y=="10") %>%
+diagnoses_translated <- diagnoses_icd_df |>
+  left_join(d_icd_diagnoses_df, by = "icd_code") |>
+  filter(icd_version.y == "10")  |>
   top_n(3, wt = seq_num)  # Select top 3 diagnoses
 
 # Convert to a readable format
@@ -106,11 +106,11 @@ diagnoses_text <- paste(diagnoses_translated$long_title,
                         collapse = ", ")
 
 # Merge procedures with descriptions
-procedures_translated <- procedure_data %>%
+procedures_translated <- procedure_data  |>
   left_join(d_icd_procedures_df, by = "icd_code")
 
 # Ensure procedure titles are available
-procedure_data <- procedure_data %>%
+procedure_data <- procedure_data  |>
   left_join(d_icd_procedures_df, by = "icd_code") 
 
 # Create ggplot visualization
@@ -154,6 +154,8 @@ ICU stays are a subset of ADT history. This figure shows the vitals of the patie
 ![](10001217_icu.png)
 
 Do a similar visualization for the patient `10063848`.
+
+**Solution:** My work is shown below.
 ```{r}
 #ingest all icu data
 chartevents_pq <- arrow::open_dataset("chartevents_parquet",
@@ -167,8 +169,6 @@ icu_all <- chartevents_pq |>
           left_join(y=d_items_df, by="itemid") |>
           select(subject_id, stay_id, charttime,
                  itemid, valuenum, abbreviation)
-
-
 ```
 ```{r}
 #I consulted with Bowen on this question and he said my computer may read time differently so the second stay could show a different time period.
@@ -423,7 +423,7 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link. get the most recent lab result of each patients for each icu stay
 
-
+**Solution:** My work is shown below.
 ```{r}
 # I followed Dr.Zhou's instruction during lecture for this question
 # create dictionary table
@@ -478,6 +478,7 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 
 ![](chartevents_tble.png)
 
+**Solution:** My work is shown below.
 ```{r}
 #take the average of the value at all storetime 
 
@@ -531,6 +532,7 @@ Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all 
 The final `mimic_icu_cohort` should have one row per ICU stay and columns for each variable.
 
 ![](mimic_icu_cohort.png)
+**Solution:** My work is shown below.
 ```{r}
 #according to mimic documentation online, age of a patient = hospital admission time - anchor_year + anchor_age
 mimic_icu_cohort <- patients_tble |>
@@ -614,8 +616,8 @@ for (i in vital_measurements) {
 ggplot(mimic_icu_cohort, aes(x=first_careunit, y=los)) +
   geom_bar(stat = "identity", fill = "steelblue") +
    labs(
-    title = "Length of ICU stay `los` vs first careunit",
-    x = "First careunit",
+    title = "Length of ICU stay vs First Careunit",
+    x = "First Careunit",
     y = "Length of ICU stay"
   ) +
   theme_minimal()+
