@@ -1,7 +1,7 @@
 ---
 title: "Biostat 203B Homework 4"
 subtitle: "Due Mar 9 @ 11:59PM"
-author: "Your Name and UID"
+author: "Yanzi Sun 106183069"
 format:
   html:
     theme: cosmo
