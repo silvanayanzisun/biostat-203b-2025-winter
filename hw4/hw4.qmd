@@ -128,7 +128,42 @@ labevents_tble <- tbl(con_bq, "labevents") |>
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events (by `storetime`) during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes. Similary to HW3, if a vital has multiple measurements at the first `storetime`, average them.
 ```{r}
 # # TODO
-# chartevents_tble <- 
+# chartevents_tble <- '
+
+dchartitems_tble <-  tbl(con_bq, "d_items")|>
+  filter(itemid %in% c(
+    220045, 220179, 220180, 223761, 220210)) |>
+  mutate(itemid = as.integer(itemid)) |>
+  collect()
+
+chartevents_tble <- tbl(con_bq, "chartevents") |>
+  select(subject_id, itemid, storetime, valuenum) |>
+  filter(itemid %in% dchartitems_tble$itemid) |>
+  left_join(
+    select(icustays_tble, subject_id, stay_id),
+    by=c("subject_id"),
+    #copy=TRUE copies the r table into duckdb table to make them mergeable
+    copy = TRUE )|>
+  group_by(subject_id, stay_id, itemid) |>
+  # i forgot if Dr. Zhou want us to take average of the mean value or use the first stored value. but here is the case when taking the mean:
+  #summarise(mean_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") |>
+  slice_min(storetime, n = 1) |>
+  select(-storetime) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  rename_at (
+    vars(as.character(dchartitems_tble$itemid)),
+    ~str_to_lower(dchartitems_tble$label)
+  ) |>
+  # # # show_query() |>
+  # collect() |>
+  arrange(subject_id, stay_id) |>
+  relocate(subject_id, stay_id, `heart rate`,
+           `non invasive blood pressure systolic`,
+           `non invasive blood pressure diastolic`,
+           `respiratory rate`, `temperature fahrenheit`) |>
+  print(width = Inf)
+
 ```
 
 ### Q1.7 Put things together
