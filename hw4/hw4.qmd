@@ -171,8 +171,30 @@ chartevents_tble <- tbl(con_bq, "chartevents") |>
 This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble, (vi) sort `subject_id`, `hadm_id`, `stay_id` and `print(width = Inf)`.
 
 ```{r}
-# # TODO
-# mimic_icu_cohort <- 
+mimic_icu_cohort <- icustays_tble |>
+  left_join(patients_tble, by = c("subject_id")) |>
+  mutate(age_at_intime = year(intime) - anchor_year + anchor_age) |>
+  filter(age_at_intime >=18) |>
+  left_join(admissions_tble, by = c("subject_id","hadm_id"))
+
+first_vitals <- chartevents_tble |>
+  group_by(subject_id, stay_id) |>
+  slice_min(stay_id, n = 1) |>  # Get the first recorded value
+  ungroup()
+
+#  Summarize LAST lab values BEFORE ICU stay
+last_labs <- labevents_tble |>
+  group_by(subject_id, stay_id) |>
+  slice_max(stay_id, n = 1) |>  # Get the last recorded value before ICU
+  ungroup()
+
+#  JOIN summarized tables to mimic_icu_cohort
+mimic_icu_cohort <- mimic_icu_cohort |>
+  left_join(first_vitals, by = c("subject_id", "stay_id")) |>
+  left_join(last_labs, by = c("subject_id", "stay_id")) |>
+  collect() |>
+  arrange(subject_id, hadm_id, stay_id) |>
+  print(mimic_icu_cohort)
 ```
 
 ### Q1.8 Preprocessing
