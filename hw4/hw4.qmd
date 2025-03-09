@@ -204,6 +204,51 @@ Perform the following preprocessing steps. (i) Lump infrequent levels into "Othe
 Hint: Below is a numerical summary of my tibble after preprocessing:
 
 <iframe width=95% height="500" src="./mimic_icu_cohort_gtsummary.html"></iframe>
+```{r}
+unique(mimic_icu_cohort$race)
+```
+```{r}
+library(forcats)
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(
+    first_careunit = fct_lump_n(first_careunit, n = 4, other_level = "Other"),
+    last_careunit = fct_lump_n(last_careunit, n = 4, other_level = "Other"),
+    admission_type = fct_lump_n(admission_type, n = 4, other_level = "Other"),
+    admission_location = fct_lump_n(admission_location, n = 4, other_level = "Other"),
+    discharge_location = fct_lump_n(discharge_location, n = 4, other_level = "Other"),
+    
+    race = fct_collapse(race,
+      ASIAN = c("ASIAN", "ASIAN - CHINESE", "ASIAN - KOREAN", 
+                "ASIAN - ASIAN INDIAN", "ASIAN - SOUTH EAST ASIAN",
+                "ASIAN - VIETNAMESE", "ASIAN - FILIPINO", "ASIAN - CAMBODIAN", 
+                "ASIAN - OTHER", "ASIAN - JAPANESE", "ASIAN - THAI"),
+      BLACK = c("BLACK/AFRICAN AMERICAN", "BLACK/CAPE VERDEAN", 
+                "BLACK/HAITIAN", "BLACK/AFRICAN", "BLACK/CARIBBEAN ISLAND"),
+      HISPANIC = c("HISPANIC OR LATINO", "HISPANIC/LATINO - PUERTO RICAN", 
+                   "HISPANIC/LATINO - DOMINICAN", "HISPANIC/LATINO - GUATEMALAN", 
+                   "HISPANIC/LATINO - CUBAN", "HISPANIC/LATINO - SALVADORAN", 
+                   "HISPANIC/LATINO - MEXICAN", "HISPANIC/LATINO - COLUMBIAN", 
+                   "HISPANIC/LATINO - HONDURAN", "HISPANIC/LATINO - CENTRAL AMERICAN"),
+      WHITE = c("WHITE", "WHITE - OTHER EUROPEAN", "WHITE - EASTERN EUROPEAN",
+                "WHITE - BRAZILIAN", "WHITE - RUSSIAN", "PORTUGUESE"),
+      Other = c("UNKNOWN", "OTHER", "PATIENT DECLINED TO ANSWER",
+                "UNABLE TO OBTAIN", "MULTIPLE RACE/ETHNICITY",
+                "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", 
+                "SOUTH AMERICAN", "AMERICAN INDIAN/ALASKA NATIVE")
+    ),    los_long = los >= 2) 
+
+mimic_icu_cohort|>
+  select(first_careunit, last_careunit, 
+         los, admission_type, admission_location,
+         discharge_location, insurance, language, marital_status, race,
+         hospital_expire_flag, gender, dod, chloride, 
+         creatinine, sodium, potassium, glucose, hematocrit, 
+         wbc, bicarbonate, 'non invasive blood pressure systolic',
+         'non invasive blood pressure diastolic', 'respiratory rate', 
+         'temperature fahrenheit', 'heart rate', age_at_intime, los_long) |>
+  tbl_summary(by = los_long)
+
+```
 
 ### Q1.9 Save the final tibble
 
