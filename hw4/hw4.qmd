@@ -97,32 +97,29 @@ patients_tble <- tbl(con_bq, "patients") |>
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements (by `storetime`) before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
 dlabitems_tble <- tbl(con_bq, "d_labitems") |>
-  filter(itemid %in% c(
-    50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) |>
-  collect() |>
-  # show_query() |>
-  print(width = Inf)
+  filter(itemid %in% 
+           c(50912, 50971, 50983, 50902, 50882, 51221, 51301, 50931)) |>
+  collect()
 
 labevents_tble <- tbl(con_bq, "labevents") |>
+  filter(itemid %in% dlabitems_tble$itemid) |>
   left_join(
     select(icustays_tble, subject_id, stay_id, intime),
-    by=c("subject_id") )|>
+    by = "subject_id"
+  ) |>
   filter(storetime < intime) |>
-  mutate(itemid = as.integer(itemid)) |>
   group_by(subject_id, stay_id, itemid) |>
   slice_max(storetime, n = 1) |>
-  select(-storetime, -intime) |>
-  ungroup() |>
+  ungroup() |> 
+  select(subject_id, stay_id, itemid, valuenum) |>
   pivot_wider(names_from = itemid, values_from = valuenum) |>
-  rename_at (
+  rename_at(
     vars(as.character(dlabitems_tble$itemid)),
-    ~str_to_lower(dlabitems_tble$label)
+    ~ str_to_lower(dlabitems_tble$label)
   ) |>
   rename(wbc = `white blood cells`) |>
-# show_query() |>
-  collect() |>
   arrange(subject_id, stay_id) |>
-  relocate(subject_id, stay_id, chloride, hematocrit, bicarbonate, glucose, potassium, sodium, hematocrit, wbc) |>
+  relocate(subject_id, stay_id, bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
   print(width = Inf)
 ```
 
