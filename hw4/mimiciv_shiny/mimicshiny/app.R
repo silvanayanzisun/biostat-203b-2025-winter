@@ -14,6 +14,7 @@ con_bq <- dbConnect(
   billing = "biostat-203b-2025-winter"
 )
 
+##############################################################
 #load data required for ADT graph
 patients_df <- tbl(con_bq, "patients") 
 transfers_df <- tbl(con_bq, "transfers") 
@@ -23,7 +24,17 @@ diagnoses_df <- tbl(con_bq, "diagnoses_icd")
 d_icd_procedures_df <- tbl(con_bq, "d_icd_procedures")
 d_icd_diagnoses_df <- tbl(con_bq, "d_icd_diagnoses")
 admissions_df <- tbl(con_bq, "admissions") # Add this for the race info used in the plot
+#############################################################
+#load data required for ICU graph
+icu_all <- tbl(con_bq, "chartevents") |>  
+  filter(itemid %in% c(220045, 220179, 223761, 220210)) |>  
+  select(subject_id, stay_id, charttime, itemid, valuenum) |>  
+  left_join(tbl(con_bq, "d_items") |> select(itemid, abbreviation), by = "itemid") |>  # Join inside BigQuery
+  distinct()  # Remove duplicates before collecting
+  #mutate(charttime = as.POSIXct(charttime, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"))
 
+
+#############################################################
 # Load ICU cohort data
 mimic_icu_cohort <- readRDS("mimic_icu_cohort.rds") %>%
   mutate(
@@ -137,90 +148,57 @@ server <- function(input, output, session) {
         rename(Category = input$variable, Count = n)
     }
   }, rownames = FALSE)
-  
-  ##tab2  
+ ############################################################################## 
   patient_data <- eventReactive(input$submit_patient, {
-    req(input$patient_id)  # Ensure input is not empty
-    patient_id <- as.numeric(input$patient_id)  # Convert safely
+    req(input$patient_id)
     
-    # filter
-    patient_df <- patients_df |> filter(subject_id == patient_id) |> collect()
-    transfers_data <- transfers_df |> filter(subject_id == patient_id) |> collect() |>
-      mutate(intime = as.Date(intime), outtime = as.Date(outtime))
+    patient_id <- as.numeric(input$patient_id)
     
-    lab_data <- labevents_df |> filter(subject_id == patient_id) |> collect() |>
-      mutate(charttime = as.Date(charttime))
+    patient_df <- as.data.frame(collect(patients_df |> filter(subject_id == patient_id)))
+    transfers_data <- as.data.frame(collect(transfers_df |> filter(subject_id == patient_id))) %>%
+      mutate(intime = as.Date(intime), outtime = as.Date(outtime))  # ✅ Convert to Date
     
-    procedure_data <- procedures_df |> filter(subject_id == patient_id) |> collect() |>
-      mutate(chartdate = as.Date(chartdate)) |>
-      left_join(d_icd_procedures_df, by = "icd_code")
+    lab_data <- as.data.frame(collect(labevents_df |> filter(subject_id == patient_id))) %>%
+      mutate(charttime = as.Date(charttime))  # ✅ Convert to Date
     
-    admission_data <- admissions_df |> filter(subject_id == patient_id) |> collect()
+    procedure_data <- as.data.frame(collect(procedures_df |> filter(subject_id == patient_id))) %>%
+      mutate(chartdate = as.Date(chartdate))  # ✅ Convert to Date
     
-    diagnoses_data <- diagnoses_df |> filter(subject_id == patient_id) |> collect()
+    admission_data <- as.data.frame(collect(admissions_df |> filter(subject_id == patient_id)))
+    diagnoses_data <- as.data.frame(collect(diagnoses_df |> filter(subject_id == patient_id)))
     
-    diagnoses_translated <- diagnoses_data |>
-      left_join(d_icd_diagnoses_df, by = "icd_code") |>
-      filter(icd_version == "10") |>
-      top_n(3, wt = seq_num)  # Select top 3 diagnoses
+    d_icd_procedures_df <- collect(d_icd_procedures_df) |> as.data.frame()
+    d_icd_diagnoses_df <- collect(d_icd_diagnoses_df) |> filter(icd_version == "10") |> as.data.frame()
     
-    # Convert to a readable format
-    diagnoses_text <- if(nrow(diagnoses_translated) > 0) {
-      paste(diagnoses_translated$long_title, collapse = ", ")
-    } else {
-      "No diagnoses available"
-    }
+    diagnoses_translated <- diagnoses_data |> 
+      left_join(d_icd_diagnoses_df, by = "icd_code") |> 
+      top_n(3, wt = seq_num) |> as.data.frame()
     
-    # Return all the data as a list - THIS IS THE CRITICAL PART!
+    diagnoses_text <- paste(diagnoses_translated$long_title, collapse = ", ")
+    
+    procedure_data <- procedure_data |> left_join(d_icd_procedures_df, by = "icd_code")
+    
+    icu_all <- as.data.frame(collect(icu_all |> filter(subject_id == patient_id)))
+    
+
     list(
       patient_df = patient_df,
       transfers_data = transfers_data,
       lab_data = lab_data,
       procedure_data = procedure_data,
       admission_data = admission_data,
-      diagnoses_text = diagnoses_text
+      diagnoses_text = diagnoses_text,
+      icu_all = icu_all 
     )
   })
   
-  # Display patient info
-  output$patient_info <- render_gt({
-    req(patient_data())
-    
-    patient <- patient_data()$patient_df
-    
-    if(nrow(patient) == 0) {
-      return(gt(data.frame(Message = "Patient not found")))
-    }
-    
-    info_df <- data.frame(
-      Attribute = c("Subject ID", "Gender", "Age", "Diagnoses"),
-      Value = c(
-        patient$subject_id[1],
-        patient$gender[1],
-        patient$anchor_age[1],
-        patient_data()$diagnoses_text
-      )
-    )
-    
-    gt(info_df)
-  })
   
-  # FIXED: Changed from summary_plot to patient_plot to match UI output ID
   output$patient_plot <- renderPlot({
     req(input$plot_type, patient_data())
     
-    # Access the reactive data
     data <- patient_data()
     
     if (input$plot_type == "ADT") {
-      # Check if we have transfer data
-      if(nrow(data$transfers_data) == 0) {
-        return(ggplot() + 
-                 annotate("text", x = 0.5, y = 0.5, label = "No transfer data available") +
-                 theme_void())
-      }
-      
-      # Create the plot with proper data access through the list
       ggplot() +
         # Plot Transfers (Care Units) as segments
         geom_segment(data = data$transfers_data, 
@@ -228,28 +206,22 @@ server <- function(input, output, session) {
                          y = "ADT", yend = "ADT", color = careunit),
                      size = 3) +
         
-        # Plot Lab Events as points if available
-        {if(nrow(data$lab_data) > 0) 
-          geom_point(data = data$lab_data, 
-                     aes(x = charttime, y = "Lab"), 
-                     shape = 3, size = 2)
-        } +
+        # Plot Lab Events as points
+        geom_point(data = data$lab_data, 
+                   aes(x = charttime, y = "Lab"), 
+                   shape = 3, size = 2) +
         
-        # Plot Procedures as points if available
-        {if(nrow(data$procedure_data) > 0) 
-          geom_point(data = data$procedure_data, 
-                     aes(x = chartdate, y = "Procedure", shape = long_title), 
-                     size = 3, fill = "black")
-        } +
+        # Plot Procedures as points
+        geom_point(data = data$procedure_data, 
+                   aes(x = chartdate, y = "Procedure", shape = long_title), 
+                   size = 3) +
         
         # Formatting
         labs(
           title = paste0("Patient ", data$patient_df$subject_id[1],
                          ", ", data$patient_df$gender[1], ", ", 
-                         data$patient_df$anchor_age[1], " years old",
-                         if(nrow(data$admission_data) > 0) 
-                           paste0(", ", data$admission_data$race[1]) 
-                         else ""),
+                         data$patient_df$anchor_age[1], " years old, ",
+                         ifelse(nrow(data$admission_data) > 0, data$admission_data$race[1], "Race Unknown")),
           subtitle = paste("Diagnoses:", data$diagnoses_text),
           x = "Calendar Time", y = "Type of Event",
           color = "Care Unit",
@@ -257,11 +229,28 @@ server <- function(input, output, session) {
         ) +
         scale_x_date(date_labels = "%b %d") +
         theme_minimal(base_size = 8)
-    } else if(input$plot_type == "ICU") {
-      # Placeholder for ICU plot
-      ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, label = "ICU plot to be implemented") +
-        theme_void()
+      
+    } else if (input$plot_type == "ICU") {
+      # **✅ Use `data$icu_all` from patient_data()**
+      icu_all <- data$icu_all  
+      
+      if (nrow(icu_all) == 0) {
+        return(ggplot() + annotate("text", x = 0.5, y = 0.5, label = "No ICU data available") + theme_void())
+      }
+      
+      ggplot(icu_all, aes(x = charttime, y = valuenum, color = abbreviation)) +
+        geom_line() + 
+        geom_point() + 
+        facet_grid(abbreviation ~ stay_id, scales = "free") + 
+        scale_x_datetime() +
+        
+        labs(
+          title = paste("Patient", input$patient_id, "ICU stays - Vitals"),
+          x = "Calendar Time", 
+          y = "Vital Value",
+          color = "Vital Sign"
+        ) +
+        theme_minimal()
     }
   })
 }
