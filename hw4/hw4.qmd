@@ -3,7 +3,7 @@ title: "Biostat 203B Homework 4"
 subtitle: "Due Mar 9 @ 11:59PM"
 author: "Yanzi Sun 106183069"
 format:
-  html:
+  pdf:
     theme: cosmo
     embed-resources: true
     number-sections: false
@@ -174,27 +174,31 @@ This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform fo
 mimic_icu_cohort <- icustays_tble |>
   left_join(patients_tble, by = c("subject_id")) |>
   mutate(age_at_intime = year(intime) - anchor_year + anchor_age) |>
-  filter(age_at_intime >=18) |>
-  left_join(admissions_tble, by = c("subject_id","hadm_id"))
+  filter(age_at_intime >= 18) |>
+  left_join(admissions_tble, by = c("subject_id", "hadm_id"))
 
+# Ensure `stay_id` is an integer to prevent partitioning issues
 first_vitals <- chartevents_tble |>
+  mutate(stay_id = as.integer(stay_id)) |>  # Convert stay_id to INT64
   group_by(subject_id, stay_id) |>
-  slice_min(stay_id, n = 1) |>  # Get the first recorded value
+  slice_min(stay_id, n = 1) |>  
   ungroup()
 
-#  Summarize LAST lab values BEFORE ICU stay
 last_labs <- labevents_tble |>
+  mutate(stay_id = as.integer(stay_id)) |>  # Convert stay_id to INT64
   group_by(subject_id, stay_id) |>
-  slice_max(stay_id, n = 1) |>  # Get the last recorded value before ICU
+  slice_max(stay_id, n = 1) |>  
   ungroup()
 
-#  JOIN summarized tables to mimic_icu_cohort
+# JOIN summarized tables to mimic_icu_cohort
 mimic_icu_cohort <- mimic_icu_cohort |>
   left_join(first_vitals, by = c("subject_id", "stay_id")) |>
   left_join(last_labs, by = c("subject_id", "stay_id")) |>
-  collect() |>
-  arrange(subject_id, hadm_id, stay_id) |>
-  print(mimic_icu_cohort)
+  collect() |>  # Collect data BEFORE using arrange()
+  mutate(stay_id = as.integer(stay_id)) |>  # Convert to INT after collecting
+  arrange(subject_id, hadm_id, stay_id)  # Arrange AFTER collecting
+
+print(mimic_icu_cohort)
 ```
 
 ### Q1.8 Preprocessing
