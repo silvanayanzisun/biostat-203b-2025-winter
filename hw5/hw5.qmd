@@ -33,7 +33,8 @@ mimic_icu_cohort <- readRDS("C:/Users/yanya/Documents/Biostat-203B-HW-W25/hw4/mi
     gender = as.factor(gender),
     los_long = as.logical(los_long), # Ensure it is TRUE/FALSE
     los_long = factor(los_long, levels = c(FALSE, TRUE), labels = c("no", "yes"))) |>
-    drop_na(los_long)
+    drop_na(los_long) |>
+    slice_sample(prop = 0.25)  # downsample for faster computation
 
 #have an overview of the dataset
 #mimic_icu_cohort |> tbl_summary(by = los_long)
@@ -241,9 +242,10 @@ svm_wf
 
 ```{r}
 # Tune the model
- # Trail one with best roc-auc ~0.65, since the best point is on the top-right edge, tune the grid to retrain
+ # Trail #1 with best roc-auc ~0.65, since the best point is on the top-right edge, tune the grid to retrain
+ # For Trail #2, reduced the sample size to 1/4 of original size to speed up the computation
 param_grid <- grid_regular(
-  cost(range = c(0, 8)),
+  cost(range = c(0, 6)),
   rbf_sigma(range = c(-4, -1)),
   levels = c(3, 3)
   )
