@@ -78,17 +78,17 @@ dim(mimic_test)
 
 3. Train and tune the models using the training set.
 
-**Solution:** I choose to do logistic regression, random forest, xgboost, and finally model stacking.
+**Solution:** I choose to do logistic regression, SVM, MLP, and finally model stacking.
 ```{r}
-mimic_other %>%
-  summarise(across(everything(), ~ sum(is.na(.)))) %>%
-   print(width = Inf)
-
-table(mimic_icu_cohort$los_long)
-summary(mimic_icu_cohort$los_long)
-str(mimic_icu_cohort$los_long)
-
-table(mimic_other$los_long)
+#this chunk is checking the data cleaniness, do not need to run so I commented
+# mimic_other %>%
+#   summarise(across(everything(), ~ sum(is.na(.)))) %>%
+#    print(width = Inf)
+# 
+# table(mimic_icu_cohort$los_long)
+# summary(mimic_icu_cohort$los_long)
+# str(mimic_icu_cohort$los_long)
+# table(mimic_other$los_long)
 
 ```
 Here is the code for logistic regression:
@@ -199,6 +199,119 @@ final_fit |>
   collect_metrics()
 ```
 
+-------------------------------------------------------------------------------
+**Solution:** Here is the code for SVM:
+```{r}
+# Recipe
+library(kernlab)
+svm_recipe <- 
+  recipe(
+    los_long ~ ., 
+    data = mimic_other
+  ) |>
+  step_unknown(all_nominal(), -all_outcomes()) |>  # Handle missing categorical values
+  # mean imputation for numeric variable
+  step_impute_mean(`heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
+         `respiratory rate`, `temperature fahrenheit`,
+         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
+  # mode imputation for catrgorical variable
+  step_impute_mode(marital_status) |>
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
 
+```{r}
+# Model
+svm_mod <- 
+  svm_rbf(
+    mode = "classification",
+    cost = tune(),
+    rbf_sigma = tune()
+  ) |> 
+  set_engine("kernlab")
+svm_mod
+
+# Bundle recipe & Model
+svm_wf <- workflow() |>
+  add_recipe(svm_recipe) |>
+  add_model(svm_mod)
+svm_wf
+```
+
+```{r}
+# Tune the model
+param_grid <- grid_regular(
+  cost(range = c(-8, 5)),
+  rbf_sigma(range = c(-5, -3)),
+  levels = c(14, 5)
+  )
+param_grid
+
+```
+
+```{r}
+# CV, since SVM is slow, I choose to use only 2 folds here.
+set.seed(203)
+
+folds <- vfold_cv(mimic_other, v = 2)
+folds
+
+# Fit cross-validation
+svm_fit <- svm_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+svm_fit
+
+# Visualize CV results
+svm_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = cost, y = mean, color = factor(rbf_sigma))) +
+  geom_point() +
+  labs(x = "Cost", y = "CV AUC") +
+  scale_x_log10()
+```
+
+```{r}
+svm_fit |>
+  show_best(metric = "roc_auc")
+
+best_svm <- svm_fit |>
+  select_best(metric = "roc_auc")
+best_svm
+
+# Final workflow
+final_wf <- svm_wf |>
+  finalize_workflow(best_svm)
+final_wf
+
+# Fit the whole training set, then predict the test cases
+final_fit <- 
+  final_wf |>
+  last_fit(data_split)
+final_fit
+
+# Test metrics
+final_fit |> 
+  collect_metrics()
+```
+
+--------------------------------------------------------------------------------
+Here is the code for MLP:
+```{r}
+# Recipe
+
+```
 
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
