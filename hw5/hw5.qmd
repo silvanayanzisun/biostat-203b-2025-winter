@@ -24,7 +24,9 @@ library(GGally)
 library(gtsummary)
 library(tidyverse)
 library(tidymodels)
-
+library(tensorflow)
+library(keras)
+library(reticulate)
 #load the mimic-icu dataset
 mimic_icu_cohort <- readRDS("~/Desktop/203B/203B-HW/hw4/mimiciv_shiny/mimic_icu_cohort.rds") |>
   mutate(
@@ -313,7 +315,100 @@ final_fit |>
 Here is the code for MLP:
 ```{r}
 # Recipe
-
+mlp_recipe <-
+  recipe(
+    los_long ~ ., 
+    data = mimic_other
+  ) |>
+  step_unknown(all_nominal(), -all_outcomes()) |>  # Handle missing categorical values
+  # mean imputation for numeric variable
+  step_impute_mean(`heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
+         `respiratory rate`, `temperature fahrenheit`,
+         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
+  # mode imputation for catrgorical variable
+  step_impute_mode(marital_status) |>
+  # create traditional dummy variables
+  step_dummy(all_nominal_predictors()) |>
+  # zero-variance filter
+  step_zv(all_numeric_predictors()) |> 
+  # center and scale numeric data
+  step_normalize(all_numeric_predictors()) |>
+  # estimate the means and standard deviations
+  # prep(training = Heart_other, retain = TRUE) |>
+  print()
+```
+```{r}
+# Model
+mlp_mod <- 
+  mlp(
+    mode = "classification",
+    hidden_units = tune(),
+    dropout = tune(),
+    epochs = 50,
+  ) |> 
+  set_engine("keras", verbose = 0)
 ```
 
+```{r}
+# bundle recipe and model(workflow step)
+mlp_wf <- workflow() |>
+  add_recipe(mlp_recipe) |>
+  add_model(mlp_mod)
+mlp_wf
+```
+
+```{r}
+# Tune
+param_grid <- grid_regular(
+  hidden_units(range = c(1, 20)),
+  dropout(range = c(0, 0.6)),
+  levels = c(3, 3)
+  )
+param_grid
+```
+```{r}
+#CV
+set.seed(203)
+
+folds <- vfold_cv(mimic_other, v = 2)
+folds
+
+mlp_fit <- mlp_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+    )
+mlp_fit
+#I had to use a virtual environment since tensorflow only runs on python 3.10 whereas i originally have python 3.12 on my pc.
+#use_virtualenv("r-tensorflow", required = TRUE)
+mlp_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = dropout, y = mean, color = factor(hidden_units))) +
+  geom_point() +
+  labs(x = "Dropout Rate", y = "CV AUC") +
+  scale_x_log10()
+
+mlp_fit |>
+  show_best(metric = "roc_auc")
+
+best_mlp <- mlp_fit |>
+  select_best(metric = "roc_auc")
+best_mlp
+
+```
+```{r}
+#finalize model
+final_wf <- mlp_wf |>
+  finalize_workflow(best_mlp)
+final_wf
+
+final_fit <-
+  final_wf |>
+  last_fit(data_split)
+final_fit
+final_fit |> collect_metrics()
+```
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
