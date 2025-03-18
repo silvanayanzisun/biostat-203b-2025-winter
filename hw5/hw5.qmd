@@ -26,7 +26,7 @@ library(tidyverse)
 library(tidymodels)
 
 #load the mimic-icu dataset
-mimic_icu_cohort <- readRDS("C:/Users/yanya/Documents/Biostat-203B-HW-W25/hw4/mimiciv_shiny/mimic_icu_cohort.rds") |>
+mimic_icu_cohort <- readRDS("~/Desktop/203B/203B-HW/hw4/mimiciv_shiny/mimic_icu_cohort.rds") |>
   mutate(
     insurance = as.factor(insurance),
     marital_status = as.factor(marital_status),
@@ -242,14 +242,19 @@ svm_wf
 
 ```{r}
 # Tune the model
- # Trail #1 with best roc-auc ~0.65, since the best point is on the top-right edge, tune the grid to retrain
- # For Trail #2, reduced the sample size to 1/4 of original size to speed up the computation
-param_grid <- grid_regular(
+ # Trail #1 with best roc-auc ~0.593, since the best point is on the top-right edge, tune the grid to retrain
+ # For Trail #2, reduced the sample size to 1/4 of original size to speed up the computation. confirmed that the auc ~0.596 is the top-performance point
+param_grid2 <- grid_regular(
   cost(range = c(0, 6)),
   rbf_sigma(range = c(-4, -1)),
   levels = c(3, 3)
   )
-param_grid
+# param_grid1 <- grid_regular(
+#   cost(range = c(-8, 5)),
+#   rbf_sigma(range = c(-5, -3)),
+#   levels = c(3, 3)
+#   )
+param_grid2
 
 ```
 
@@ -264,7 +269,7 @@ folds
 svm_fit <- svm_wf |>
   tune_grid(
     resamples = folds,
-    grid = param_grid,
+    grid = param_grid2,
     metrics = metric_set(roc_auc, accuracy)
     )
 svm_fit
