@@ -39,13 +39,7 @@ mimic_icu_cohort <- readRDS("C:/Users/yanya/Documents/Biostat-203B-HW-W25/hw4/mi
 #mimic_icu_cohort |> tbl_summary(by = los_long)
 
 ```
-```{r}
-names(mimic_icu_cohort)
-library(dplyr)
-mimic_other %>%
-  summarise(across(everything(), ~ sum(is.na(.)))) %>%
-  print(width = Inf)
-```
+
 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 ```{r}
 #| eval: false
@@ -247,10 +241,11 @@ svm_wf
 
 ```{r}
 # Tune the model
+ # Trail one with best roc-auc ~0.65, since the best point is on the top-right edge, tune the grid to retrain
 param_grid <- grid_regular(
-  cost(range = c(-8, 5)),
-  rbf_sigma(range = c(-5, -3)),
-  levels = c(14, 5)
+  cost(range = c(0, 8)),
+  rbf_sigma(range = c(-4, -1)),
+  levels = c(3, 3)
   )
 param_grid
 
