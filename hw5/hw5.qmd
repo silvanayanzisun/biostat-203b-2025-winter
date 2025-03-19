@@ -1,7 +1,7 @@
 ---
 title: "Biostat 203B Homework 5"
 subtitle: Due Mar 20 @ 11:59PM
-author: "Your Name and UID"
+author: "Yanzi Sun 106183069"
 format:
   html:
     theme: cosmo
@@ -36,9 +36,10 @@ mimic_icu_cohort <- readRDS("~/Desktop/203B/203B-HW/hw4/mimiciv_shiny/mimic_icu_
     marital_status = as.factor(marital_status),
     gender = as.factor(gender),
     los_long = as.logical(los_long), # Ensure it is TRUE/FALSE
-    los_long = factor(los_long, levels = c(FALSE, TRUE), labels = c("no", "yes"))) |>
-    drop_na(los_long) |>
-    slice_sample(prop = 0.25)  # downsample for faster computation
+    los_long = factor(los_long, levels = c(FALSE, TRUE), 
+                      labels = c("no", "yes"))) |>
+    drop_na(los_long) #|>
+    #slice_sample(prop = 0.25)  # downsample for faster computation
 
 #have an overview of the dataset
 #mimic_icu_cohort |> tbl_summary(by = los_long)
@@ -54,9 +55,11 @@ set.seed(203)
 mimic_icu_cohort <- mimic_icu_cohort |>
   arrange(subject_id, hadm_id, stay_id) |>
   select(first_careunit, gender, age_at_intime, marital_status, race,
-         `heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
+         `heart rate`, `non invasive blood pressure systolic`, 
+         `non invasive blood pressure diastolic`, 
          `respiratory rate`, `temperature fahrenheit`,
-         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc, 
+         bicarbonate, chloride, creatinine, glucose, potassium, 
+         sodium, hematocrit, wbc, 
          los_long)
 
 #Initial split into test and non-test sets
@@ -102,7 +105,8 @@ logit_recipe <-
   # mean imputation for numeric variable
   step_impute_mean(`heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
          `respiratory rate`, `temperature fahrenheit`,
-         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
+         bicarbonate, chloride, creatinine, glucose, potassium, sodium, 
+         hematocrit, wbc) |>
   # mode imputation for catrgorical variable
   step_impute_mode(marital_status) |>
   # create traditional dummy variables
@@ -212,7 +216,8 @@ svm_recipe <-
   # mean imputation for numeric variable
   step_impute_mean(`heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
          `respiratory rate`, `temperature fahrenheit`,
-         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
+         bicarbonate, chloride, creatinine, glucose, potassium, sodium,
+         hematocrit, wbc) |>
   # mode imputation for catrgorical variable
   step_impute_mode(marital_status) |>
   # create traditional dummy variables
@@ -326,7 +331,8 @@ gb_recipe <-
   # mean imputation for numeric variable
   step_impute_mean(`heart rate`, `non invasive blood pressure systolic`, `non invasive blood pressure diastolic`, 
          `respiratory rate`, `temperature fahrenheit`,
-         bicarbonate, chloride, creatinine, glucose, potassium, sodium, hematocrit, wbc) |>
+         bicarbonate, chloride, creatinine, glucose, potassium, 
+         sodium, hematocrit, wbc) |>
   # mode imputation for catrgorical variable
   step_impute_mode(marital_status) |>
   # create traditional dummy variables
