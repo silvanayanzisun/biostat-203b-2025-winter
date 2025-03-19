@@ -27,6 +27,8 @@ library(tidymodels)
 library(tensorflow)
 library(keras)
 library(reticulate)
+library(xgboost)
+library(ranger)
 #load the mimic-icu dataset
 mimic_icu_cohort <- readRDS("~/Desktop/203B/203B-HW/hw4/mimiciv_shiny/mimic_icu_cohort.rds") |>
   mutate(
@@ -339,7 +341,6 @@ gb_recipe <-
 ```
 ```{r}
 # Model
-library(xgboost)
 gb_mod <- 
   boost_tree(
     mode = "classification",
@@ -456,8 +457,9 @@ rf_mod <-
     mode = "classification",
     mtry = tune(),
     trees = tune()
-  ) |> 
-  set_engine("ranger")
+    ) |> 
+  set_engine("ranger",
+    importance = "impurity")
 rf_mod
 
 #i used xgboost recipe here since they are essentially the same
@@ -531,10 +533,13 @@ autoplot(mimic_model_st, type = "weights")
 
 ```
 ```{r}
+collect_parameters(mimic_model_st, "rf_res")
+```
+
+```{r}
 #final classification
-mimic_pred <- mimic_test |>
-  bind_cols(
-    predict(mimic_model_st, type = "prob")) |>
+mimic_pred <- mimic_test %>%
+  bind_cols(predict(mimic_model_st, ., type = "prob")) %>%
   print(width = Inf)
 
 yardstick::roc_auc(
@@ -562,9 +567,22 @@ map(colnames(mimic_pred),
 
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 **Solution:**
+```{r}
+library(vip)
+
+best_rf <- rf_res |> select_best(metric = "roc_auc")
+
+rf_fit <- rf_wf |> 
+  finalize_workflow(best_rf) |> 
+  fit(data = mimic_other)
+
+rf_fit |>
+  extract_fit_parsnip() |>
+  vip(num_features = 10) 
+```
 Logistic regression gives an AUC of 0.586;
 SVM gives an AUC of 0.596;
 xgboost gives the best performance with an AUC of 0.605.
-model stacking(logistic + random forest + xgboost) gives an AUC of 
-xgboost provides the best result so far. The most important features predicting los_long are:
-xgboost provides the best performance, and logistic regression provides the best interpretability.
+model stacking(logistic + random forest + xgboost) gives an AUC of 0.578. 
+xgboost provides the best result so far. The most important features predicting los_long according to rf(since it has the highest weight in stacking) are: hematocrit, wbc, glucose,blood pressures, and heart rate.
+xgboost performed best in ROC-AUC, meaning it distinguishes long ICU stays most effectively. Logistic regression provides the best interpretability since variable coefficients indicates the feature inpact directly.
