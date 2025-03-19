@@ -75,7 +75,7 @@ dim(mimic_test)
 
 3. Train and tune the models using the training set.
 
-**Solution:** I choose to do logistic regression, SVM, MLP, and finally model stacking.
+**Solution:** I choose to do logistic regression, SVM, xgboost, and finally model stacking.
 ```{r}
 #this chunk is checking the data cleaniness, do not need to run so I commented
 # mimic_other %>%
@@ -88,7 +88,7 @@ dim(mimic_test)
 # table(mimic_other$los_long)
 
 ```
-Here is the code for logistic regression:
+##Here is the code for logistic regression:
 ```{r}
 #Recipe 
 logit_recipe <- 
@@ -197,7 +197,7 @@ final_fit |>
 ```
 
 -------------------------------------------------------------------------------
-**Solution:** Here is the code for SVM:
+##Here is the code for SVM:
 ```{r}
 # Recipe
 library(kernlab)
@@ -312,10 +312,10 @@ final_fit |>
 ```
 
 --------------------------------------------------------------------------------
-Here is the code for MLP:
+##Here is the code for xgBoost:
 ```{r}
 # Recipe
-mlp_recipe <-
+gb_recipe <-
   recipe(
     los_long ~ ., 
     data = mimic_other
@@ -339,29 +339,31 @@ mlp_recipe <-
 ```
 ```{r}
 # Model
-mlp_mod <- 
-  mlp(
+library(xgboost)
+gb_mod <- 
+  boost_tree(
     mode = "classification",
-    hidden_units = tune(),
-    dropout = tune(),
-    epochs = 50,
+    trees = 1000,
+    tree_depth = tune(),
+    learn_rate = tune()
   ) |> 
-  set_engine("keras", verbose = 0)
+  set_engine("xgboost")
+gb_mod
 ```
 
 ```{r}
 # bundle recipe and model(workflow step)
-mlp_wf <- workflow() |>
-  add_recipe(mlp_recipe) |>
-  add_model(mlp_mod)
-mlp_wf
+gb_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(gb_mod)
+gb_wf
 ```
 
 ```{r}
 # Tune
 param_grid <- grid_regular(
-  hidden_units(range = c(1, 20)),
-  dropout(range = c(0, 0.6)),
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
   levels = c(3, 3)
   )
 param_grid
@@ -373,36 +375,36 @@ set.seed(203)
 folds <- vfold_cv(mimic_other, v = 2)
 folds
 
-mlp_fit <- mlp_wf |>
+gb_fit <- gb_wf |>
   tune_grid(
     resamples = folds,
     grid = param_grid,
     metrics = metric_set(roc_auc, accuracy)
     )
-mlp_fit
-#I had to use a virtual environment since tensorflow only runs on python 3.10 whereas i originally have python 3.12 on my pc.
-#use_virtualenv("r-tensorflow", required = TRUE)
-mlp_fit |>
+gb_fit
+
+# Visualize
+gb_fit |>
   collect_metrics() |>
   print(width = Inf) |>
   filter(.metric == "roc_auc") |>
-  ggplot(mapping = aes(x = dropout, y = mean, color = factor(hidden_units))) +
+  ggplot(mapping = aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
   geom_point() +
-  labs(x = "Dropout Rate", y = "CV AUC") +
+  labs(x = "Learning Rate", y = "CV AUC") +
   scale_x_log10()
 
-mlp_fit |>
+gb_fit |>
   show_best(metric = "roc_auc")
 
-best_mlp <- mlp_fit |>
+best_gb <- gb_fit |>
   select_best(metric = "roc_auc")
-best_mlp
+best_gb
 
 ```
 ```{r}
 #finalize model
-final_wf <- mlp_wf |>
-  finalize_workflow(best_mlp)
+final_wf <- gb_wf |>
+  finalize_workflow(best_gb)
 final_wf
 
 final_fit <-
@@ -411,4 +413,158 @@ final_fit <-
 final_fit
 final_fit |> collect_metrics()
 ```
+##Model Stacking code:
+```{r}
+# set up 2-fold CV
+set.seed(203)
+library(stacks)
+folds <- vfold_cv(mimic_other, v = 2)
+
+# Base models
+# logistic regression
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) |> 
+  set_engine("glmnet", standardize = FALSE)
+logit_mod
+
+logit_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(logit_mod)
+logit_wf
+
+logit_grid <- grid_regular(
+  penalty(range = c(-6, 3)), 
+  mixture(),
+  levels = c(100, 5)
+  )
+
+logit_res <- logit_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = logit_grid,
+    control = control_stack_grid()
+    )
+logit_res
+
+#random forest
+library(ranger)
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    mtry = tune(),
+    trees = tune()
+  ) |> 
+  set_engine("ranger")
+rf_mod
+
+#i used xgboost recipe here since they are essentially the same
+rf_wf <- workflow() |>
+  add_recipe(gb_recipe) |>
+  add_model(rf_mod)
+rf_wf
+
+rf_grid <- grid_regular(
+  trees(range = c(100L,500L)),
+  mtry(range = c(1L, 5L)),
+  levels = c(5,5)
+)
+
+rf_res <- tune_grid(
+  object = rf_wf,
+  resamples = folds,
+  grid = rf_grid,
+  control = control_stack_grid()
+)
+rf_res
+
+#xgboost
+gb_mod <- boost_tree(
+          mode = "classification",
+          trees = 1000,
+          tree_depth = tune(),
+          learn_rate = tune()
+) |> set_engine("xgboost")
+gb_mod
+
+gb_wf <- workflow() |>
+      add_recipe(gb_recipe) |>
+      add_model(gb_mod)
+gb_wf
+
+gb_grid <- grid_regular(
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3, 3)
+  )
+gb_grid
+
+gb_res <- 
+  tune_grid(
+    object = gb_wf,
+    resamples = folds,
+    grid = gb_grid,
+    control = control_stack_grid()
+  )
+gb_res
+```
+```{r}
+#stacking models
+mimic_model_st <- stacks() |>
+  add_candidates(logit_res)|>
+  add_candidates(rf_res) |>
+  add_candidates(gb_res) |>
+  blend_predictions(
+    penalty = 10^(-6:2),
+    metrics = c("roc_auc")
+  ) |>
+  fit_members()
+mimic_model_st
+autoplot(mimic_model_st)
+autoplot(mimic_model_st, type = "members")
+autoplot(mimic_model_st, type = "weights")
+#collect_metrics(mimic_model_st, "rf_res")
+
+
+
+```
+```{r}
+#final classification
+mimic_pred <- mimic_test |>
+  bind_cols(
+    predict(mimic_model_st, type = "prob")) |>
+  print(width = Inf)
+
+yardstick::roc_auc(
+  mimic_pred,
+  truth = los_long,
+  contains(".pred_No")
+)
+
+mimic_pred <- mimic_test |>
+  select(los_long) |>
+  bind_cols(
+    predict(mimic_model_st,
+            mimic_test,
+            type = "class",
+            members = TRUE)) |>
+  print(width = Inf)
+
+map(colnames(mimic_pred),
+    ~mean(mimic_pred$los_long == pull(mimic_pred, .x))
+    ) |>
+  set_names(colnames(mimic_pred)) |>
+  as_tibble() |>
+  pivot_longer(c(everything(), -los_long))
+```
+
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+**Solution:**
+Logistic regression gives an AUC of 0.586;
+SVM gives an AUC of 0.596;
+xgboost gives the best performance with an AUC of 0.605.
+model stacking(logistic + random forest + xgboost) gives an AUC of 
+xgboost provides the best result so far. The most important features predicting los_long are:
+xgboost provides the best performance, and logistic regression provides the best interpretability.
