@@ -572,7 +572,7 @@ map(colnames(mimic_pred),
 
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
 
-**Solution:**
+**Solution:** Since xgboost dominants the stacking, I will look into the top features in xgboost.
 ```{r}
 library(vip)
 
@@ -592,10 +592,10 @@ SVM gives an AUC of 0.61 and accuracy of 0.58;
 
 xgboost gives the best performance with an AUC of 0.622 and accuracy of 0.584.
 
-model stacking(logistic + random forest + xgboost) gives an AUC of 0.63 and accuracy of 0.59. boosting is the dominant model among all three.
+model stacking(logistic + random forest + xgboost) gives an AUC of 0.63 and accuracy of 0.59.
 
 xgboost provides the best result so far. The most important features predicting los_long according to rf(since it has the highest weight in stacking) are: temperature, age_at_intime and wbc.
 
-xgboost performed best in ROC-AUC, meaning it distinguishes long ICU stays most effectively.
+model stacking performed best in ROC-AUC, meaning it distinguishes long ICU stays most effectively. Among all three models, boosting is the dominant model and contributes the most to the result, which is supported by its good individual performance we discussed before(AUC=0.63)
 
 Logistic regression provides the best interpretability since variable coefficients indicates the feature inpact directly.
