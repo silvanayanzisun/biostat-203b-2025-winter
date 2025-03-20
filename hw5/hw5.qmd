@@ -3,7 +3,7 @@ title: "Biostat 203B Homework 5"
 subtitle: Due Mar 20 @ 11:59PM
 author: "Yanzi Sun 106183069"
 format:
-  html:
+  pdf:
     theme: cosmo
     embed-resources: true
     number-sections: false
@@ -48,7 +48,7 @@ mimic_icu_cohort <- readRDS("~/Desktop/203B/203B-HW/hw4/mimiciv_shiny/mimic_icu_
 
 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 ```{r}
-#| eval: false
+##| eval: false
 set.seed(203)
 
 # sort
@@ -576,25 +576,25 @@ map(colnames(mimic_pred),
 ```{r}
 library(vip)
 
-best_rf <- rf_res |> select_best(metric = "roc_auc")
+best_gb <- gb_res |> select_best(metric = "roc_auc")
 
-rf_fit <- rf_wf |> 
-  finalize_workflow(best_rf) |> 
+gb_fit <- gb_wf |> 
+  finalize_workflow(best_gb) |> 
   fit(data = mimic_other)
 
-rf_fit |>
+gb_fit |>
   extract_fit_parsnip() |>
   vip(num_features = 10) 
 ```
-Logistic regression gives an AUC of 0.586;
+Logistic regression gives an AUC of 0.585 and accuracy of 0.561;
 
-SVM gives an AUC of 0.596;
+SVM gives an AUC of 0.61 and accuracy of 0.58;
 
-xgboost gives the best performance with an AUC of 0.622.
+xgboost gives the best performance with an AUC of 0.622 and accuracy of 0.584.
 
-model stacking(logistic + random forest + xgboost) gives an AUC of 0.591. 
+model stacking(logistic + random forest + xgboost) gives an AUC of 0.63 and accuracy of 0.59. boosting is the dominant model among all three.
 
-xgboost provides the best result so far. The most important features predicting los_long according to rf(since it has the highest weight in stacking) are: hematocrit, wbc, glucose,blood pressures, and heart rate.
+xgboost provides the best result so far. The most important features predicting los_long according to rf(since it has the highest weight in stacking) are: temperature, age_at_intime and wbc.
 
 xgboost performed best in ROC-AUC, meaning it distinguishes long ICU stays most effectively.
 
