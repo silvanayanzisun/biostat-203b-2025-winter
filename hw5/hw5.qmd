@@ -3,7 +3,7 @@ title: "Biostat 203B Homework 5"
 subtitle: Due Mar 20 @ 11:59PM
 author: "Yanzi Sun 106183069"
 format:
-  pdf:
+  html:
     theme: cosmo
     embed-resources: true
     number-sections: false
